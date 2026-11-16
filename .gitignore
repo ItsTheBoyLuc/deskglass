@@ -12,7 +12,12 @@ coverage/
 *.key
 *.pfx
 *.p12
-secrets.*
+# secret files at the repo root only (src/main/secrets.ts is source code, not a secret)
+/secrets.*
+*.secret
+*.secrets
+!src/main/secrets.ts
+!tests/secrets.test.ts
 *.ics
 .DS_Store
 Thumbs.db

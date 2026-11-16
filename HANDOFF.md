@@ -1,6 +1,6 @@
 # HANDOFF
 
-Last updated: 2026-11-16 · branch `main` · version 1.0.0 (**not tagged, not released**)
+Last updated: 2026-11-16 · branch `main` · version 1.0.0 · **release v1.0.0 approved by the user and published via the GitHub Actions workflow** (see Releases page: https://github.com/ItsTheBoyLuc/deskglass/releases)
 Scope now includes the second brief: resizable widgets (S/M/L), Spotify widget (PKCE), web-chat mode (default).
 
 ## Status per widget
@@ -26,6 +26,10 @@ Edit mode (unlocked): dashed outline + corner handle. Renderer -> IPC start/end,
 Installer install/uninstall clean (earlier build) · portable/unpacked start with 6 widgets + web view, embedded · autostart on/off (registry) · sizes + positions persist · 118 unit tests · typecheck · `npm audit --omit=dev` clean (earlier) · code + security reviews done twice, findings fixed.
 Idle (packaged, all widgets, claude.ai login page loaded): ~0.2 % of 32 cores, ~1.4 GB RAM summed over 13 Chromium processes.
 
+## Release notes (2026-11-16)
+- First tag push failed in CI: `.gitignore` had `secrets.*`, which also ignored `src/main/secrets.ts` and `tests/secrets.test.ts`, so a fresh clone did not compile (it built locally only because the files existed on disk). Fixed: pattern is now root-only (`/secrets.*`) with explicit un-ignores. Lesson: always verify with a fresh clone (`git clone` + `npm ci` + `npm run typecheck` + `npm test`).
+- Secret scan of tracked files: no keys, tokens, ICS URLs or real Client IDs (only fake test fixtures).
+
 ## Known issues / unverified
 1. Spotify against a real account (Client ID, Premium vs free, device selection); the redirect URI **http://127.0.0.1:8898/callback** must be registered exactly.
 2. Embedded login per AI site. Google/Apple sign-in is often refused in embedded browsers; use e-mail login (Claude/ChatGPT). Gemini only has Google login -> may not work. Blocked navigations (e.g. "sign in with Google") open in the system browser after a click.
@@ -41,7 +45,7 @@ Do not animate `width`/`height` or run CSS transitions on a widget that updates 
 ## Next 3 steps
 1. Install `dist/DeskGlass-Setup-1.0.0.exe`, create a Spotify app (README steps), connect, and confirm now-playing + controls.
 2. Log in to Claude/ChatGPT in the chat widget; try resizing every widget with the mouse (also on a second monitor if you have one).
-3. When happy: `git tag v1.0.0 && git push --tags` (workflow builds + attaches both exes). I did **not** tag.
+3. Download the exes from the Releases page and try them (SmartScreen: More info > Run anyway). Further changes: bump `version` in package.json, tag `vX.Y.Z` (the tag must match the version).
 
 ## How to resume
 ```bash
