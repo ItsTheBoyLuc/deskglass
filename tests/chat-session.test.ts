@@ -4,7 +4,7 @@ import { keyTransportAllowed } from '../src/main/services/chat/providers'
 import { DEFAULT_SETTINGS } from '../src/shared/settings'
 import type { ChatEvent, Settings } from '../src/shared/types'
 
-const compat: Settings = { ...DEFAULT_SETTINGS, chat: { provider: 'openai-compat', model: 'm', baseUrl: 'http://127.0.0.1:9/v1' } }
+const compat: Settings = { ...DEFAULT_SETTINGS, chat: { ...DEFAULT_SETTINGS.chat, provider: 'openai-compat', model: 'm', baseUrl: 'http://127.0.0.1:9/v1' } }
 const enc = new TextEncoder()
 const delta = (t: string) => enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`)
 const DONE = enc.encode('data: [DONE]\n\n')

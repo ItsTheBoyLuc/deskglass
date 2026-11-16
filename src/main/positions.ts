@@ -3,12 +3,31 @@ export interface Size { width: number; height: number }
 export interface Rect extends Point, Size {}
 export interface DisplayInfo { id: number; workArea: Rect }
 
+export interface Limits { min: Size; max: Size }
+/** Where (and optionally how big) a widget was on one monitor. */
+export interface Placement extends Point { width?: number; height?: number }
 /** Remembered placement of one widget: where it was on every monitor it has lived on. */
-export interface WidgetPositions { last: number; byDisplay: Record<string, Point> }
+export interface WidgetPositions { last: number; byDisplay: Record<string, Placement> }
 
 /** The store file is user-editable: only trust finite numbers. */
-const validPoint = (p: Point | undefined): Point | undefined =>
+const validPoint = (p: Placement | undefined): Placement | undefined =>
   p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : undefined
+const validSize = (p: Placement | undefined): Size | undefined =>
+  p && Number.isFinite(p.width) && Number.isFinite(p.height) && (p.width as number) > 0 && (p.height as number) > 0
+    ? { width: p.width as number, height: p.height as number }
+    : undefined
+
+/** Clamp a size between the widget's limits and the work area (the minimum always wins over a tiny screen). */
+export function clampSize(size: Size, limits: Limits, wa: Rect): Size {
+  const one = (v: number, min: number, max: number, area: number): number => {
+    const value = Number.isFinite(v) ? v : min
+    return Math.round(Math.max(min, Math.min(value, max, area)))
+  }
+  return {
+    width: one(size.width, limits.min.width, limits.max.width, wa.width),
+    height: one(size.height, limits.min.height, limits.max.height, wa.height)
+  }
+}
 
 export function clampToWorkArea(p: Point, size: Size, wa: Rect): Point {
   const maxX = wa.x + wa.width - size.width
@@ -21,7 +40,12 @@ export function clampToWorkArea(p: Point, size: Size, wa: Rect): Point {
 }
 
 export function rememberPosition(prev: WidgetPositions | undefined, displayId: number, p: Point): WidgetPositions {
-  return { last: displayId, byDisplay: { ...(prev?.byDisplay ?? {}), [String(displayId)]: { x: p.x, y: p.y } } }
+  const key = String(displayId)
+  return { last: displayId, byDisplay: { ...(prev?.byDisplay ?? {}), [key]: { ...prev?.byDisplay?.[key], x: p.x, y: p.y } } }
+}
+
+export function rememberBounds(prev: WidgetPositions | undefined, displayId: number, r: Rect): WidgetPositions {
+  return { last: displayId, byDisplay: { ...(prev?.byDisplay ?? {}), [String(displayId)]: { x: r.x, y: r.y, width: r.width, height: r.height } } }
 }
 
 /**
@@ -44,6 +68,24 @@ export function resolvePosition(
   if (home && point) return clampToWorkArea(point, size, home.workArea)
   if (point) return clampToWorkArea(point, size, primary.workArea)
   return clampToWorkArea(fallback(primary.workArea), size, primary.workArea)
+}
+
+/** Full placement (position + size) of a widget: saved size per monitor, clamped to limits and work area. */
+export function resolveBounds(
+  saved: WidgetPositions | undefined,
+  defaults: Size,
+  limits: Limits,
+  displays: DisplayInfo[],
+  primaryId: number,
+  fallback: (workArea: Rect) => Point
+): Rect {
+  const primary = displays.find((d) => d.id === primaryId) ?? displays[0]
+  if (!primary) return { x: 0, y: 0, ...defaults }
+  const entry = saved && typeof saved === 'object' ? saved.byDisplay?.[String(saved.last)] : undefined
+  const home = (saved && displays.find((d) => d.id === saved.last)) || primary
+  const size = clampSize(validSize(entry) ?? defaults, limits, home.workArea)
+  const point = resolvePosition(saved, size, displays, primaryId, fallback)
+  return { ...point, ...size }
 }
 
 /** Display whose work area overlaps the window most (falls back to the closest centre). */

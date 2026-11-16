@@ -9,10 +9,11 @@ import { mountStats } from './widgets/stats'
 import { mountWeather } from './widgets/weather'
 import { mountAgenda } from './widgets/agenda'
 import { mountChat } from './widgets/chat'
+import { mountMusic } from './widgets/music'
 import { mountSettings } from './widgets/settings'
 
 const MOUNTS: Record<WidgetId | 'settings', Mount> = {
-  clock: mountClock, stats: mountStats, weather: mountWeather, agenda: mountAgenda, chat: mountChat, settings: mountSettings
+  clock: mountClock, stats: mountStats, weather: mountWeather, agenda: mountAgenda, music: mountMusic, chat: mountChat, settings: mountSettings
 }
 
 async function boot(): Promise<void> {
@@ -43,16 +44,22 @@ async function boot(): Promise<void> {
   if (id !== 'settings') enableDrag(api)
 }
 
-/** Drag by header (or whole widget for display-only ones). Main follows the cursor; we just signal start/end. */
+/**
+ * Drag by header (or whole widget for display-only ones) and resize by the corner handle.
+ * Main follows the cursor; we just signal start/end (a transparent window cannot be resized natively).
+ */
 function enableDrag(api: Window['deskglass']): void {
   document.addEventListener('pointerdown', (e) => {
     const t = e.target as HTMLElement
-    if (e.button !== 0 || !t.closest('[data-drag]') || t.closest('button,input,textarea,select,a')) return
-    const el = t.closest('[data-drag]') as HTMLElement
+    const resizing = e.button === 0 && t.closest('[data-resize]') !== null
+    if (!resizing && (e.button !== 0 || !t.closest('[data-drag]') || t.closest('button,input,textarea,select,a'))) return
+    const el = (resizing ? t.closest('[data-resize]') : t.closest('[data-drag]')) as HTMLElement
     el.setPointerCapture(e.pointerId)
-    api.dragStart()
+    if (resizing) api.resizeStart()
+    else api.dragStart()
     const end = (): void => {
-      api.dragEnd()
+      if (resizing) api.resizeEnd()
+      else api.dragEnd()
       el.removeEventListener('pointerup', end)
       el.removeEventListener('pointercancel', end)
       el.removeEventListener('lostpointercapture', end)

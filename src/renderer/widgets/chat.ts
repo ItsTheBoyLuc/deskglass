@@ -1,6 +1,7 @@
 import { h, frame } from '../dom'
 import type { Mount } from '../dom'
 import type { ChatEvent, ChatMessage } from '../../shared/types'
+import { PROVIDERS } from '../../shared/webproviders'
 
 export const mountChat: Mount = (root, ctx) => {
   const newBtn = h('button', { text: 'Nieuwe chat', title: 'Begin een nieuw gesprek' })
@@ -27,8 +28,15 @@ export const mountChat: Mount = (root, ctx) => {
     send.textContent = on ? 'Stop' : 'Stuur'
     dot.className = on ? 'dot' : 'dot off'
   }
+  const label = h('span', { class: 'provider-label' })
+  newBtn.before(label)
   const renderHint = (): void => {
     const { chat } = ctx.state().settings
+    // Web mode: main embeds the provider's site below this header; the native chat UI is hidden by CSS.
+    document.body.classList.toggle('web', chat.mode === 'web')
+    label.textContent = chat.mode === 'web' ? PROVIDERS[chat.webProvider].label : ''
+    label.title = chat.mode === 'web' ? 'Log in met e-mail als Google of Apple wordt geblokkeerd in dit venster.' : ''
+    newBtn.style.display = chat.mode === 'web' ? 'none' : ''
     const noKey = chat.provider === 'anthropic' && !ctx.state().has.chatApiKey
     hint.textContent = noKey ? 'Geen API-sleutel: open Instellingen → AI.' : `${chat.provider === 'anthropic' ? 'Anthropic' : 'Eigen endpoint'} · ${chat.model}`
   }

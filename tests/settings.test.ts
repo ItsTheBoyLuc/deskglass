@@ -43,6 +43,28 @@ describe('applySettingsPatch', () => {
     expect(next.chat.baseUrl).toBe(DEFAULT_SETTINGS.chat.baseUrl)
   })
 
+  it('validates chat mode and web provider', () => {
+    expect(DEFAULT_SETTINGS.chat.mode).toBe('web')
+    expect(applySettingsPatch(DEFAULT_SETTINGS, { chat: { mode: 'api', webProvider: 'gemini' } }).chat).toMatchObject({ mode: 'api', webProvider: 'gemini' })
+    const bad = applySettingsPatch(DEFAULT_SETTINGS, { chat: { mode: 'evil', webProvider: 'evil.com' } } as never)
+    expect(bad.chat.mode).toBe('web')
+    expect(bad.chat.webProvider).toBe(DEFAULT_SETTINGS.chat.webProvider)
+  })
+
+  it('accepts only a 32-hex Spotify client id (or empty to clear)', () => {
+    const id = '0123456789abcdef0123456789ABCDEF'
+    expect(applySettingsPatch(DEFAULT_SETTINGS, { spotifyClientId: id }).spotifyClientId).toBe(id)
+    expect(applySettingsPatch(DEFAULT_SETTINGS, { spotifyClientId: 'not-an-id' }).spotifyClientId).toBe('')
+    const set = applySettingsPatch(DEFAULT_SETTINGS, { spotifyClientId: id })
+    expect(applySettingsPatch(set, { spotifyClientId: '  ' }).spotifyClientId).toBe('')
+    expect(applySettingsPatch(set, { spotifyClientId: 42 } as never).spotifyClientId).toBe(id)
+  })
+
+  it('includes the music widget in enabled flags', () => {
+    expect(DEFAULT_SETTINGS.enabled.music).toBe(true)
+    expect(applySettingsPatch(DEFAULT_SETTINGS, { enabled: { music: false } }).enabled.music).toBe(false)
+  })
+
   it('only accepts known providers and desktop modes', () => {
     expect(applySettingsPatch(DEFAULT_SETTINGS, { chat: { provider: 'openai-compat' } }).chat.provider).toBe('openai-compat')
     expect(applySettingsPatch(DEFAULT_SETTINGS, { chat: { provider: 'evil' } } as never).chat.provider).toBe(DEFAULT_SETTINGS.chat.provider)

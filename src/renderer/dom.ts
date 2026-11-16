@@ -37,7 +37,8 @@ export function frame(title: string, opts: { dragAll?: boolean; extra?: Node } =
   const dot = h('span', { class: 'dot off' })
   const bar = h('div', { class: 'bar', 'data-drag': opts.dragAll ? undefined : '' }, h('span', { class: 'title', text: title }), opts.extra, dot)
   const body = h('div', { class: 'body' })
-  const el = h('section', { class: 'glass', 'data-drag': opts.dragAll ? '' : undefined }, bar, body)
+  const handle = h('div', { class: 'resize-handle', 'data-resize': '', title: 'Formaat aanpassen', 'aria-hidden': 'true' })
+  const el = h('section', { class: 'glass', 'data-drag': opts.dragAll ? '' : undefined }, bar, body, handle)
   return { el, body, dot }
 }
 

@@ -1,17 +1,18 @@
 import { BrowserWindow, app, screen, session } from 'electron'
 import { join } from 'node:path'
 import { CH } from '../shared/ipc'
-import { WIDGET_IDS, WIDGET_SIZES } from '../shared/types'
-import type { ActiveDesktopMode, AppState, WidgetId } from '../shared/types'
+import { WIDGET_IDS, WIDGET_LIMITS, WIDGET_PRESETS, WIDGET_SIZES } from '../shared/types'
+import type { ActiveDesktopMode, AppState, SizePreset, WidgetId } from '../shared/types'
 import { isAutostart } from './autostart'
 import { attach } from './desktop'
-import { clampToWorkArea, displayForRect, rememberPosition, resolvePosition } from './positions'
+import { clampSize, clampToWorkArea, displayForRect, rememberBounds, resolveBounds } from './positions'
 import type { DisplayInfo, Point, Rect } from './positions'
 import { startRunner } from './runners'
+import { attachWebChat, detachWebChat } from './webchat'
 import { getSettings, secrets, store } from './store'
 
 /** Widgets that take mouse/keyboard input even when "locked" (they can't be click-through). */
-const INTERACTIVE: ReadonlySet<WidgetId> = new Set(['agenda', 'chat'])
+const INTERACTIVE: ReadonlySet<WidgetId> = new Set(['agenda', 'music', 'chat'])
 const MARGIN = 24
 const GAP = 16
 
@@ -37,17 +38,19 @@ function defaultPosition(id: WidgetId, wa: Rect): Point {
     case 'weather': return { x: col1, y: top }
     case 'agenda': return { x: col1, y: top + WIDGET_SIZES.weather.height + GAP }
     case 'chat': return { x: wa.x + MARGIN, y: top }
+    case 'music': return { x: wa.x + MARGIN, y: top + WIDGET_SIZES.chat.height + GAP }
   }
 }
 
-function placement(id: WidgetId): Point {
-  return resolvePosition(store.get('positions')[id], WIDGET_SIZES[id], displays(), screen.getPrimaryDisplay().id, (wa) => defaultPosition(id, wa))
+/** Saved (or default) position + size of a widget, clamped to limits and the monitor it lives on. */
+function bounds(id: WidgetId): Rect {
+  return resolveBounds(store.get('positions')[id], WIDGET_SIZES[id], WIDGET_LIMITS[id], displays(), screen.getPrimaryDisplay().id, (wa) => defaultPosition(id, wa))
 }
 
 export function buildState(): AppState {
   return {
     settings: getSettings(),
-    has: { chatApiKey: secrets.has('chatApiKey'), compatApiKey: secrets.has('compatApiKey'), icsUrl: secrets.has('icsUrl') },
+    has: { chatApiKey: secrets.has('chatApiKey'), compatApiKey: secrets.has('compatApiKey'), icsUrl: secrets.has('icsUrl'), spotifyRefreshToken: secrets.has('spotifyRefreshToken') },
     desktopMode: activeMode,
     autostart: isAutostart(),
     version: app.getVersion()
@@ -95,11 +98,8 @@ export function initSession(): void {
 }
 
 function createWidget(id: WidgetId): BrowserWindow {
-  const size = WIDGET_SIZES[id]
-  const pos = placement(id)
   const win = new BrowserWindow({
-    ...size,
-    ...pos,
+    ...bounds(id),
     show: false,
     frame: false,
     resizable: false,
@@ -117,6 +117,7 @@ function createWidget(id: WidgetId): BrowserWindow {
   load(win, id)
   win.once('ready-to-show', () => {
     activeMode = attach(win, getSettings().desktopMode).mode
+    if (id === 'chat') syncChatView()
     onModeChange?.()
     win.showInactive()
     applyLock(id)
@@ -127,9 +128,23 @@ function createWidget(id: WidgetId): BrowserWindow {
     stops.get(id)?.()
     stops.delete(id)
     widgets.delete(id)
+    if (id === 'chat') chatShown = ''
   })
   widgets.set(id, win)
   return win
+}
+
+/** Chat widget: embedded provider website (web mode) or the native chat UI (api mode). */
+let chatShown = ''
+export function syncChatView(): void {
+  const win = widgets.get('chat')
+  if (!win || win.isDestroyed()) { chatShown = ''; return }
+  const { mode, webProvider } = getSettings().chat
+  const want = mode === 'web' ? `web:${webProvider}` : 'api'
+  if (want === chatShown) return
+  chatShown = want
+  if (mode === 'web') attachWebChat(win, webProvider)
+  else detachWebChat(win)
 }
 
 export function applyLock(id?: WidgetId): void {
@@ -155,42 +170,73 @@ export function syncWidgets(): void {
 export function repositionAll(): void {
   for (const [id, w] of widgets) {
     if (w.isDestroyed()) continue
-    const p = placement(id)
-    w.setBounds({ ...p, ...WIDGET_SIZES[id] }) // setBounds, not setPosition: avoids DPI-induced resizes
+    w.setBounds(bounds(id)) // setBounds, not setPosition: avoids DPI-induced resizes
   }
 }
 
-// --- dragging: main follows the cursor, so it works for any desktop mode and mixed-DPI setups ---
-let dragTimer: NodeJS.Timeout | null = null
+// --- move / resize: main follows the cursor, so it works for any desktop mode and mixed-DPI setups ---
+// A transparent frameless window cannot be resized natively, so the renderer only signals start/end.
+type Gesture = 'move' | 'resize'
+let gestureTimer: NodeJS.Timeout | null = null
+const idOf = (win: BrowserWindow): WidgetId | undefined => [...widgets].find(([, w]) => w === win)?.[0]
 
-export function startDrag(win: BrowserWindow): void {
-  if (getSettings().locked || dragTimer) return
-  const id = [...widgets].find(([, w]) => w === win)?.[0]
+function startGesture(win: BrowserWindow, kind: Gesture): void {
+  if (getSettings().locked || gestureTimer) return
+  const id = idOf(win)
   if (!id) return
-  const origin = win.getPosition()
+  const origin = win.getBounds()
   const cursor0 = screen.getCursorScreenPoint()
-  const size = WIDGET_SIZES[id]
-  win.once('closed', () => endDrag(win)) // a vanished window must not leave the timer running
-  dragTimer = setInterval(() => {
-    if (win.isDestroyed()) return endDrag(win)
+  const wa = (displayForRect(origin, displays()) ?? displays()[0])?.workArea
+  // While resizing, the right/bottom edge may not leave the monitor.
+  const room: Rect = wa
+    ? { x: origin.x, y: origin.y, width: wa.x + wa.width - origin.x, height: wa.y + wa.height - origin.y }
+    : { x: origin.x, y: origin.y, width: 10_000, height: 10_000 }
+  win.once('closed', () => endGesture(win)) // a vanished window must not leave the timer running
+  let last = ''
+  gestureTimer = setInterval(() => {
+    if (win.isDestroyed()) return endGesture(win)
     const c = screen.getCursorScreenPoint()
-    win.setBounds({ x: origin[0]! + c.x - cursor0.x, y: origin[1]! + c.y - cursor0.y, ...size })
-  }, 16)
+    const dx = c.x - cursor0.x
+    const dy = c.y - cursor0.y
+    const next: Rect = kind === 'move'
+      ? { x: origin.x + dx, y: origin.y + dy, width: origin.width, height: origin.height }
+      : { x: origin.x, y: origin.y, ...clampSize({ width: origin.width + dx, height: origin.height + dy }, WIDGET_LIMITS[id], room) }
+    const key = `${next.x},${next.y},${next.width},${next.height}`
+    if (key === last) return // only touch the window when something changed
+    last = key
+    win.setBounds(next)
+  }, kind === 'resize' ? 32 : 16)
 }
 
-export function endDrag(win: BrowserWindow): void {
-  if (dragTimer) clearInterval(dragTimer)
-  dragTimer = null
-  const id = [...widgets].find(([, w]) => w === win)?.[0]
-  if (!id || win.isDestroyed()) return
+export const startDrag = (win: BrowserWindow): void => startGesture(win, 'move')
+export const startResize = (win: BrowserWindow): void => startGesture(win, 'resize')
+
+/** Clamp the widget into its monitor (size within limits, position inside the work area) and remember it. */
+function saveBounds(id: WidgetId, win: BrowserWindow): void {
   const b = win.getBounds()
   const d = displayForRect(b, displays())
   if (!d) return
-  // Dropping a widget outside the screen snaps it back inside the work area (and that is what we remember).
-  const p = clampToWorkArea({ x: b.x, y: b.y }, WIDGET_SIZES[id], d.workArea)
-  if (p.x !== b.x || p.y !== b.y) win.setBounds({ ...p, ...WIDGET_SIZES[id] })
+  const size = clampSize(b, WIDGET_LIMITS[id], d.workArea)
+  const r: Rect = { ...clampToWorkArea(b, size, d.workArea), ...size }
+  if (r.x !== b.x || r.y !== b.y || r.width !== b.width || r.height !== b.height) win.setBounds(r)
   const all = store.get('positions')
-  store.set('positions', { ...all, [id]: rememberPosition(all[id], d.id, p) })
+  store.set('positions', { ...all, [id]: rememberBounds(all[id], d.id, r) })
+}
+
+export function endGesture(win: BrowserWindow): void {
+  if (gestureTimer) clearInterval(gestureTimer)
+  gestureTimer = null
+  const id = idOf(win)
+  if (id && !win.isDestroyed()) saveBounds(id, win)
+}
+
+/** S / M / L size preset for one widget (tray and settings). */
+export function applyPreset(id: WidgetId, preset: SizePreset): void {
+  const win = widgets.get(id)
+  const target = WIDGET_PRESETS[id]?.[preset]
+  if (!win || win.isDestroyed() || !target) return
+  win.setBounds({ ...win.getBounds(), ...target })
+  saveBounds(id, win)
 }
 
 // --- settings window (a normal window, not a desktop widget) ---
@@ -216,6 +262,7 @@ export function openSettings(): void {
 export const widgetFor = (win: BrowserWindow | null): WidgetId | undefined =>
   win ? [...widgets].find(([, w]) => w === win)?.[0] : undefined
 export const isOurWindow = (win: BrowserWindow | null): boolean => Boolean(win) && (widgetFor(win) !== undefined || win === settingsWin)
+export const widgetWindow = (id: WidgetId): BrowserWindow | undefined => widgets.get(id)
 export const isSettingsWindow = (win: BrowserWindow | null): boolean => Boolean(win) && win === settingsWin
 
 export function watchDisplays(): void {

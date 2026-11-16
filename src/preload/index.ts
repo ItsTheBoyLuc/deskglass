@@ -17,6 +17,9 @@ const api: DeskglassApi = {
   openSettings: () => ipcRenderer.send(CH.openSettings),
   dragStart: () => ipcRenderer.send(CH.dragStart),
   dragEnd: () => ipcRenderer.send(CH.dragEnd),
+  resizeStart: () => ipcRenderer.send(CH.resizeStart),
+  resizeEnd: () => ipcRenderer.send(CH.resizeEnd),
+  setPreset: (id, preset) => ipcRenderer.invoke(CH.setPreset, id, preset),
   onStats: (cb) => on(CH.stats, cb),
   getWeather: () => ipcRenderer.invoke(CH.weatherGet),
   onWeather: (cb) => on(CH.weather, cb),
@@ -29,7 +32,12 @@ const api: DeskglassApi = {
   chatSend: (text) => ipcRenderer.invoke(CH.chatSend, text),
   chatCancel: () => ipcRenderer.send(CH.chatCancel),
   chatNew: () => ipcRenderer.invoke(CH.chatNew),
-  onChat: (cb) => on(CH.chatEvent, cb)
+  onChat: (cb) => on(CH.chatEvent, cb),
+  getMusic: () => ipcRenderer.invoke(CH.musicGet),
+  onMusic: (cb) => on(CH.music, cb),
+  musicControl: (action) => ipcRenderer.invoke(CH.musicControl, action),
+  spotifyConnect: () => ipcRenderer.invoke(CH.spotifyConnect),
+  spotifyDisconnect: () => ipcRenderer.invoke(CH.spotifyDisconnect)
 }
 
 contextBridge.exposeInMainWorld('deskglass', api)

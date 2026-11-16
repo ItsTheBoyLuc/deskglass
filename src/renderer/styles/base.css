@@ -10,6 +10,8 @@ body {
 #app { height: 100%; }
 
 .glass {
+  position: relative;
+  container-type: size; /* children scale with the widget size via cq* units */
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -58,3 +60,14 @@ input[type='checkbox'] { accent-color: var(--accent); width: 15px; height: 15px;
 
 @keyframes enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* resize handle: only in edit mode (unlocked) */
+.resize-handle {
+  position: absolute; right: 3px; bottom: 3px; width: 18px; height: 18px; display: none; z-index: 5;
+  cursor: nwse-resize; opacity: 0.85;
+  background: linear-gradient(135deg, transparent 52%, var(--accent) 52% 60%, transparent 60% 72%, var(--accent) 72% 80%, transparent 80%);
+}
+body.unlocked .resize-handle { display: block; }
+
+/* settings window: no container query (it must grow with its content) */
+body.settings .glass { container-type: normal; }

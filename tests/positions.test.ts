@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampToWorkArea, rememberPosition, resolvePosition } from '../src/main/positions'
+import { clampSize, clampToWorkArea, rememberBounds, rememberPosition, resolveBounds, resolvePosition } from '../src/main/positions'
 import type { DisplayInfo } from '../src/main/positions'
 
 const d1: DisplayInfo = { id: 1, workArea: { x: 0, y: 0, width: 1920, height: 1040 } }
@@ -60,5 +60,52 @@ describe('rememberPosition', () => {
     const b = rememberPosition(a, 2, { x: 3, y: 4 })
     expect(a).toEqual({ last: 1, byDisplay: { '1': { x: 1, y: 2 } } })
     expect(b).toEqual({ last: 2, byDisplay: { '1': { x: 1, y: 2 }, '2': { x: 3, y: 4 } } })
+  })
+})
+
+const limits = { min: { width: 200, height: 100 }, max: { width: 600, height: 400 } }
+const defaults = { width: 300, height: 150 }
+
+describe('clampSize', () => {
+  it('keeps a size inside min/max', () => {
+    expect(clampSize({ width: 100, height: 50 }, limits, d1.workArea)).toEqual({ width: 200, height: 100 })
+    expect(clampSize({ width: 900, height: 900 }, limits, d1.workArea)).toEqual({ width: 600, height: 400 })
+    expect(clampSize({ width: 320, height: 210 }, limits, d1.workArea)).toEqual({ width: 320, height: 210 })
+  })
+  it('never exceeds the work area (but never goes below the minimum either)', () => {
+    const small = { x: 0, y: 0, width: 500, height: 300 }
+    expect(clampSize({ width: 600, height: 400 }, limits, small)).toEqual({ width: 500, height: 300 })
+    const tiny = { x: 0, y: 0, width: 150, height: 60 }
+    expect(clampSize({ width: 300, height: 150 }, limits, tiny)).toEqual({ width: 200, height: 100 })
+  })
+  it('rounds and survives NaN', () => {
+    expect(clampSize({ width: 250.6, height: 120.2 }, limits, d1.workArea)).toEqual({ width: 251, height: 120 })
+    expect(clampSize({ width: Number.NaN, height: 150 }, limits, d1.workArea)).toEqual({ width: 200, height: 150 })
+  })
+})
+
+describe('resolveBounds / rememberBounds', () => {
+  it('uses default size and fallback position when nothing is saved', () => {
+    expect(resolveBounds(undefined, defaults, limits, [d1], 1, fallback)).toEqual({ x: 1580, y: 24, ...defaults })
+  })
+  it('restores a saved size per monitor', () => {
+    let saved = rememberBounds(undefined, 1, { x: 100, y: 100, width: 400, height: 250 })
+    saved = rememberBounds(saved, 2, { x: 2000, y: 50, width: 220, height: 120 })
+    expect(resolveBounds(saved, defaults, limits, [d1, d2], 1, fallback)).toEqual({ x: 2000, y: 50, width: 220, height: 120 })
+    const onlyD1 = rememberBounds(rememberBounds(undefined, 2, { x: 2000, y: 50, width: 220, height: 120 }), 1, { x: 100, y: 100, width: 400, height: 250 })
+    expect(resolveBounds({ ...onlyD1, last: 1 }, defaults, limits, [d1, d2], 1, fallback)).toEqual({ x: 100, y: 100, width: 400, height: 250 })
+  })
+  it('clamps a saved size to the limits and to a smaller monitor, then re-clamps the position', () => {
+    const saved = rememberBounds(undefined, 1, { x: 1500, y: 900, width: 600, height: 400 })
+    const small: DisplayInfo = { id: 1, workArea: { x: 0, y: 0, width: 500, height: 300 } }
+    expect(resolveBounds(saved, defaults, limits, [small], 1, fallback)).toEqual({ x: 0, y: 0, width: 500, height: 300 })
+  })
+  it('ignores corrupt saved sizes', () => {
+    const bad = { last: 1, byDisplay: { '1': { x: 10, y: 10, width: Number.NaN, height: -5 } } }
+    expect(resolveBounds(bad, defaults, limits, [d1], 1, fallback)).toEqual({ x: 10, y: 10, ...defaults })
+  })
+  it('rememberPosition keeps an existing size for that monitor', () => {
+    const a = rememberBounds(undefined, 1, { x: 1, y: 2, width: 300, height: 200 })
+    expect(rememberPosition(a, 1, { x: 5, y: 6 }).byDisplay['1']).toEqual({ x: 5, y: 6, width: 300, height: 200 })
   })
 })

@@ -1,5 +1,6 @@
 import type {
-  AppState, ChatEvent, ChatMessage, EventsResult, SecretName, StatsSnapshot, Task, WeatherResult
+  SizePreset, WidgetId,
+  AppState, MusicAction, MusicState, ChatEvent, ChatMessage, EventsResult, SecretName, StatsSnapshot, Task, WeatherResult
 } from './types'
 
 /** IPC channel names, shared by main and preload so they cannot drift apart. */
@@ -12,6 +13,9 @@ export const CH = {
   openSettings: 'app:open-settings',
   dragStart: 'drag:start',
   dragEnd: 'drag:end',
+  resizeStart: 'resize:start',
+  resizeEnd: 'resize:end',
+  setPreset: 'preset:set',
   stats: 'stats:update',
   weatherGet: 'weather:get',
   weather: 'weather:update',
@@ -24,7 +28,12 @@ export const CH = {
   chatSend: 'chat:send',
   chatCancel: 'chat:cancel',
   chatNew: 'chat:new',
-  chatEvent: 'chat:event'
+  chatEvent: 'chat:event',
+  musicGet: 'music:get',
+  music: 'music:update',
+  musicControl: 'music:control',
+  spotifyConnect: 'spotify:connect',
+  spotifyDisconnect: 'spotify:disconnect'
 } as const
 
 export type Unsubscribe = () => void
@@ -40,6 +49,9 @@ export interface DeskglassApi {
   openSettings(): void
   dragStart(): void
   dragEnd(): void
+  resizeStart(): void
+  resizeEnd(): void
+  setPreset(id: WidgetId, preset: SizePreset): Promise<void>
   onStats(cb: (s: StatsSnapshot) => void): Unsubscribe
   getWeather(): Promise<WeatherResult>
   onWeather(cb: (w: WeatherResult) => void): Unsubscribe
@@ -53,4 +65,9 @@ export interface DeskglassApi {
   chatCancel(): void
   chatNew(): Promise<void>
   onChat(cb: (e: ChatEvent) => void): Unsubscribe
+  getMusic(): Promise<MusicState>
+  onMusic(cb: (s: MusicState) => void): Unsubscribe
+  musicControl(action: MusicAction): Promise<MusicState>
+  spotifyConnect(): Promise<{ ok: true } | { ok: false; error: string }>
+  spotifyDisconnect(): Promise<void>
 }

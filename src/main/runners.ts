@@ -4,9 +4,11 @@ import type { WidgetId } from '../shared/types'
 import { getSettings } from './store'
 import { createStatsSampler } from './services/stats'
 import { fetchWeather } from './services/weather'
+import { pollMusic } from './services/spotify'
 
 const STATS_MS = 1500
 const WEATHER_MS = 15 * 60_000
+const MUSIC_MS = 4000
 
 const alive = (w: BrowserWindow): boolean => !w.isDestroyed() && !w.webContents.isDestroyed()
 
@@ -39,9 +41,28 @@ function runWeather(win: BrowserWindow): () => void {
   return () => clearInterval(t)
 }
 
+/** Poll the Spotify player only while the music widget is visible (honors 429 back-off inside pollMusic). */
+function runMusic(win: BrowserWindow): () => void {
+  let busy = false
+  const tick = async (): Promise<void> => {
+    if (busy || !alive(win) || !win.isVisible() || win.isMinimized()) return
+    busy = true
+    try {
+      const s = await pollMusic()
+      if (alive(win)) win.webContents.send(CH.music, s)
+    } finally {
+      busy = false
+    }
+  }
+  void tick()
+  const t = setInterval(tick, MUSIC_MS)
+  return () => clearInterval(t)
+}
+
 /** Start the background work a widget needs; returns a stop function (called when its window closes). */
 export function startRunner(id: WidgetId, win: BrowserWindow): () => void {
   if (id === 'stats') return runStats(win)
   if (id === 'weather') return runWeather(win)
+  if (id === 'music') return runMusic(win)
   return () => {}
 }

@@ -1,8 +1,8 @@
 import { Menu, Tray, app, nativeImage } from 'electron'
 import icon from '../../resources/icon.png?asset'
-import { WIDGET_IDS, WIDGET_TITLES } from '../shared/types'
+import { SIZE_PRESETS, WIDGET_IDS, WIDGET_TITLES } from '../shared/types'
 import { isAutostart, setAutostart } from './autostart'
-import { buildState, broadcastState, openSettings, syncWidgets, applyLock } from './windows'
+import { applyLock, applyPreset, broadcastState, buildState, openSettings, syncWidgets } from './windows'
 import { getSettings, updateSettings } from './store'
 
 let tray: Tray | null = null
@@ -18,6 +18,13 @@ function menu(): Menu {
       checked: s.enabled[id],
       click: (): void => { updateSettings({ enabled: { [id]: !getSettings().enabled[id] } }); syncWidgets(); refreshTray() }
     })),
+    {
+      label: 'Formaat',
+      submenu: WIDGET_IDS.map((id) => ({
+        label: WIDGET_TITLES[id].replace(/&/g, '&&'),
+        submenu: SIZE_PRESETS.map((p) => ({ label: p, click: (): void => applyPreset(id, p) }))
+      }))
+    },
     { type: 'separator' },
     {
       label: 'Widgets vergrendelen',
