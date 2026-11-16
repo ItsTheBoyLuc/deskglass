@@ -4,7 +4,7 @@ import { CH } from '../shared/ipc'
 import { WIDGET_IDS, WIDGET_LIMITS, WIDGET_PRESETS, WIDGET_SIZES } from '../shared/types'
 import type { ActiveDesktopMode, AppState, SizePreset, WidgetId } from '../shared/types'
 import { isAutostart } from './autostart'
-import { attach } from './desktop'
+import { anyMouseButtonDown, attach } from './desktop'
 import { clampSize, clampToWorkArea, displayForRect, rememberBounds, resolveBounds } from './positions'
 import type { DisplayInfo, Point, Rect } from './positions'
 import { startRunner } from './runners'
@@ -177,11 +177,14 @@ export function repositionAll(): void {
 // --- move / resize: main follows the cursor, so it works for any desktop mode and mixed-DPI setups ---
 // A transparent frameless window cannot be resized natively, so the renderer only signals start/end.
 type Gesture = 'move' | 'resize'
-let gestureTimer: NodeJS.Timeout | null = null
+const MAX_GESTURE_MS = 60_000
+const BUTTON_GRACE_MS = 250
+/** The one active gesture: which window, its timer, and the 'closed' hook to remove when it ends. */
+let gesture: { win: BrowserWindow; timer: NodeJS.Timeout; onClosed: () => void } | null = null
 const idOf = (win: BrowserWindow): WidgetId | undefined => [...widgets].find(([, w]) => w === win)?.[0]
 
 function startGesture(win: BrowserWindow, kind: Gesture): void {
-  if (getSettings().locked || gestureTimer) return
+  if (getSettings().locked || gesture) return
   const id = idOf(win)
   if (!id) return
   const origin = win.getBounds()
@@ -191,10 +194,17 @@ function startGesture(win: BrowserWindow, kind: Gesture): void {
   const room: Rect = wa
     ? { x: origin.x, y: origin.y, width: wa.x + wa.width - origin.x, height: wa.y + wa.height - origin.y }
     : { x: origin.x, y: origin.y, width: 10_000, height: 10_000 }
-  win.once('closed', () => endGesture(win)) // a vanished window must not leave the timer running
+  const onClosed = (): void => endGesture(win)
+  win.once('closed', onClosed)
+  if (process.env.DESKGLASS_DEBUG) console.info('[gesture] start', kind, id)
+  const startedAt = Date.now()
   let last = ''
-  gestureTimer = setInterval(() => {
+  const timer = setInterval(() => {
     if (win.isDestroyed()) return endGesture(win)
+    // Watchdog: a lost pointerup (renderer reload/crash, release over the embedded web view) must not leave the
+    // widget glued to the cursor and block every later gesture.
+    const age = Date.now() - startedAt
+    if (age > MAX_GESTURE_MS || (age > BUTTON_GRACE_MS && anyMouseButtonDown() === false)) return endGesture(win)
     const c = screen.getCursorScreenPoint()
     const dx = c.x - cursor0.x
     const dy = c.y - cursor0.y
@@ -206,6 +216,7 @@ function startGesture(win: BrowserWindow, kind: Gesture): void {
     last = key
     win.setBounds(next)
   }, kind === 'resize' ? 32 : 16)
+  gesture = { win, timer, onClosed }
 }
 
 export const startDrag = (win: BrowserWindow): void => startGesture(win, 'move')
@@ -224,8 +235,11 @@ function saveBounds(id: WidgetId, win: BrowserWindow): void {
 }
 
 export function endGesture(win: BrowserWindow): void {
-  if (gestureTimer) clearInterval(gestureTimer)
-  gestureTimer = null
+  if (!gesture || gesture.win !== win) return // a stray end (e.g. a plain click on a header) must not touch anything
+  if (process.env.DESKGLASS_DEBUG) console.info('[gesture] end', idOf(win))
+  clearInterval(gesture.timer)
+  win.removeListener('closed', gesture.onClosed)
+  gesture = null
   const id = idOf(win)
   if (id && !win.isDestroyed()) saveBounds(id, win)
 }

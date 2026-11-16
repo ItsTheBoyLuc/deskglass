@@ -57,8 +57,9 @@ export function attachWebChat(win: BrowserWindow, provider: WebProvider): void {
   win.on('resize', onResize)
   win.on('hide', onHide)
   win.on('show', onShow)
-  win.once('closed', () => detachWebChat(win))
-  views.set(win, { view, off: () => { win.removeListener('resize', onResize); win.removeListener('hide', onHide); win.removeListener('show', onShow) } })
+  const onClosed = (): void => detachWebChat(win)
+  win.once('closed', onClosed)
+  views.set(win, { view, off: () => { win.removeListener('resize', onResize); win.removeListener('hide', onHide); win.removeListener('show', onShow); win.removeListener('closed', onClosed) } })
 
   const wc = view.webContents
   // Links go to the real browser only right after a real click/keypress and at most once per cooldown:
@@ -68,24 +69,36 @@ export function attachWebChat(win: BrowserWindow, provider: WebProvider): void {
   wc.on('input-event', (_e, input) => {
     if (input.type === 'mouseDown' || input.type === 'keyDown') lastGesture = Date.now()
   })
-  wc.setWindowOpenHandler(({ url }) => {
+  const openInBrowser = (url: string): void => {
     const now = Date.now()
-    if (now - lastGesture < GESTURE_WINDOW_MS && now - lastOpen > OPEN_COOLDOWN_MS) {
-      try {
-        const u = new URL(url)
-        if (u.protocol === 'https:' && !u.username && !u.password) {
-          lastOpen = now
-          void shell.openExternal(u.href)
-        }
-      } catch { /* malformed URL: ignore */ }
-    }
-    return { action: 'deny' }
-  })
-  const guard = (e: Electron.Event, url: string): void => { if (!isAllowedNavigation(provider, url)) e.preventDefault() }
+    if (now - lastGesture >= GESTURE_WINDOW_MS || now - lastOpen <= OPEN_COOLDOWN_MS) return
+    try {
+      const u = new URL(url)
+      if (u.protocol === 'https:' && !u.username && !u.password) {
+        lastOpen = now
+        void shell.openExternal(u.href)
+      }
+    } catch { /* malformed URL: ignore */ }
+  }
+  wc.setWindowOpenHandler(({ url }) => { openInBrowser(url); return { action: 'deny' } })
+  // A blocked navigation (e.g. "sign in with Google") goes to the real browser instead of a dead click.
+  const guard = (e: Electron.Event, url: string): void => {
+    if (isAllowedNavigation(provider, url)) return
+    e.preventDefault()
+    openInBrowser(url)
+  }
   wc.on('will-navigate', (e, url) => guard(e, url))
   wc.on('will-redirect', (e, url) => guard(e, url))
   wc.on('will-attach-webview', (e) => e.preventDefault())
-  void wc.loadURL(PROVIDERS[provider].url)
+  // Offline at start (or a transient error): retry with a growing delay instead of a permanently blank view.
+  let attempts = 0
+  const load = (): void => { if (!wc.isDestroyed()) void wc.loadURL(PROVIDERS[provider].url).catch(() => {}) }
+  wc.on('did-finish-load', () => { attempts = 0 })
+  wc.on('did-fail-load', (_e, code, _desc, _url, isMainFrame) => {
+    if (!isMainFrame || code === -3) return // -3 = aborted by a newer navigation
+    setTimeout(load, Math.min(5000 * 2 ** attempts++, 60_000))
+  })
+  load()
 }
 
 export const hasWebChat = (win: BrowserWindow): boolean => views.has(win)

@@ -51,6 +51,7 @@ export const mountMusic: Mount = (root, ctx) => {
   body.append(backdrop, player, msg)
 
   let state: MusicState = { status: 'disconnected' }
+  let shownMessage = ''
 
   /** Progress is interpolated locally between polls (the player is only polled every few seconds). */
   const currentProgress = (): number => {
@@ -79,6 +80,7 @@ export const mountMusic: Mount = (root, ctx) => {
   function draw(): void {
     const t = state.track
     const showing = state.status === 'playing' && t !== undefined
+    if (showing) shownMessage = ''
     player.style.display = showing ? '' : 'none'
     msg.style.display = showing ? 'none' : ''
     el.style.setProperty('--accent-m', t?.accent ? accentCss(t.accent) : 'var(--accent)')
@@ -96,6 +98,9 @@ export const mountMusic: Mount = (root, ctx) => {
       return
     }
     const m = state.status === 'error' ? { text: state.message ?? 'Spotify gaf een fout.' } : (MESSAGES[state.status] ?? { text: '' })
+    const key = `${state.status}|${m.text}|${state.notice ?? ''}`
+    if (key === shownMessage) return
+    shownMessage = key
     msg.replaceChildren(h('div', { text: m.text }), ...('button' in m && m.button ? [h('button', { text: m.button, onClick: () => ctx.api.openSettings() })] : []))
     if (state.notice) msg.append(h('div', { class: 'notice', text: state.notice }))
   }

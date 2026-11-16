@@ -18,6 +18,7 @@ type Api = {
   SetWindowLongPtrW(h: number, idx: number, v: number): number
   SetWindowPos(h: number, after: number, x: number, y: number, cx: number, cy: number, flags: number): boolean
   ShowWindow(h: number, cmd: number): boolean
+  GetAsyncKeyState(vKey: number): number
 }
 
 const GWL_STYLE = -16
@@ -45,7 +46,8 @@ try {
     GetWindowLongPtrW: user32.func('intptr_t __stdcall GetWindowLongPtrW(intptr_t h, int idx)'),
     SetWindowLongPtrW: user32.func('intptr_t __stdcall SetWindowLongPtrW(intptr_t h, int idx, intptr_t v)'),
     SetWindowPos: user32.func('bool __stdcall SetWindowPos(intptr_t h, intptr_t after, int x, int y, int cx, int cy, uint32 flags)'),
-    ShowWindow: user32.func('bool __stdcall ShowWindow(intptr_t h, int cmd)')
+    ShowWindow: user32.func('bool __stdcall ShowWindow(intptr_t h, int cmd)'),
+    GetAsyncKeyState: user32.func('int16 __stdcall GetAsyncKeyState(int vKey)')
   } as unknown as Api
 } catch (e) {
   console.error('[desktop] koffi unavailable, no native pinning:', e instanceof Error ? e.message : e)
@@ -91,6 +93,16 @@ function tryEmbed(win: BrowserWindow): boolean {
 
 function startTimer(): void {
   timer ??= setInterval(() => pinned.forEach(pinBottom), PIN_INTERVAL_MS)
+}
+
+/** Is any mouse button held? null when unknown (koffi unavailable). Used to end a drag/resize whose pointerup got lost. */
+export function anyMouseButtonDown(): boolean | null {
+  if (!api) return null
+  try {
+    return (api.GetAsyncKeyState(0x01) & 0x8000) !== 0 || (api.GetAsyncKeyState(0x02) & 0x8000) !== 0 // either button: users may swap them
+  } catch {
+    return null
+  }
 }
 
 export interface Attached { mode: ActiveDesktopMode }

@@ -58,7 +58,7 @@ export function createTokenManager({ fetchImpl, store, getClientId, now }: Token
     if (gen !== generation) return { ok: false, reason: 'not-connected' } // disconnected while we were waiting
     if (res.status === 400 || res.status === 401) {
       const err = await res.json().then((j: { error?: string }) => j?.error, () => undefined)
-      if (err === 'invalid_grant') { // revoked or expired: the stored token is useless, forget it
+      if (err === 'invalid_grant' && gen === generation) { // revoked or expired: forget it (unless a newer connect replaced it meanwhile)
         access = null
         await store.set(null)
       }
@@ -74,7 +74,7 @@ export function createTokenManager({ fetchImpl, store, getClientId, now }: Token
     if (!j?.access_token) return { ok: false, reason: 'network' }
     if (gen !== generation) return { ok: false, reason: 'not-connected' }
     access = { token: j.access_token, expiresAt: now() + (j.expires_in ?? 3600) * 1000 }
-    if (j.refresh_token && j.refresh_token !== refreshToken) await store.set(j.refresh_token)
+    if (j.refresh_token && j.refresh_token !== refreshToken) await store.set(j.refresh_token).catch(() => {}) // keep working with the valid access token even if saving the rotation fails
     return { ok: true, accessToken: access.token }
   }
 
@@ -94,6 +94,7 @@ export function createTokenManager({ fetchImpl, store, getClientId, now }: Token
       const j = (await res.json().catch(() => null)) as { access_token?: string; expires_in?: number; refresh_token?: string } | null
       if (gen !== generation) return { ok: false, error: 'Verbinding geannuleerd.' }
       if (!res.ok || !j?.access_token || !j.refresh_token) return { ok: false, error: `Spotify weigerde de verbinding (HTTP ${res.status}). Controleer Client ID en redirect-URI.` }
+      generation++ // a refresh that started before this (re)connect must not touch the new token
       access = { token: j.access_token, expiresAt: now() + (j.expires_in ?? 3600) * 1000 }
       await store.set(j.refresh_token)
       return { ok: true }

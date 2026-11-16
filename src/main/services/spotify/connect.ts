@@ -44,9 +44,15 @@ export function runAuthFlow(opts: FlowOptions): Promise<FlowResult> {
         finish({ ok: false, error: 'Toegang tot Spotify is geweigerd.' })
         return
       }
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(page('Verbonden met Spotify', 'Je kunt dit venster sluiten en terug naar DeskGlass gaan.'))
       exchanging = true // a reload of the callback page must not replay a burned code
-      exchange(code, verifier, redirectUri).then(finish, () => finish({ ok: false, error: 'Verbinden met Spotify mislukt.' }))
+      clearTimeout(timer) // the user did their part; do not report a time-out while we exchange the code
+      const reply = (r: FlowResult): void => {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(
+          r.ok ? page('Verbonden met Spotify', 'Je kunt dit venster sluiten en terug naar DeskGlass gaan.') : page('Verbinden mislukt', 'Ga terug naar DeskGlass voor de details.')
+        )
+        finish(r)
+      }
+      exchange(code, verifier, redirectUri).then(reply, () => reply({ ok: false, error: 'Verbinden met Spotify mislukt.' }))
     })
 
     const timer = setTimeout(() => finish({ ok: false, error: 'Time-out: het verbinden met Spotify is niet afgerond.' }), timeoutMs)

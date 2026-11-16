@@ -11,7 +11,7 @@ import { addTask, listTasks, removeTask, toggleTask } from './services/tasks'
 import { clearEventsCache, getEvents } from './services/agenda'
 import { cancelChat, getHistory, newChat, sendChat } from './services/chat'
 import { fetchWeather } from './services/weather'
-import { connectSpotify, disconnectSpotify, getMusicState, musicControl } from './services/spotify'
+import { connectSpotify, disconnectSpotify, getMusicState, musicControl, resetMusic } from './services/spotify'
 import type { MusicAction } from '../shared/types'
 import { normalizeIcsUrl } from './services/ics'
 import { isAutostart, setAutostart } from './autostart'
@@ -58,6 +58,7 @@ export function registerIpc(): void {
     const next = updateSettings(patch)
     if (JSON.stringify(before.enabled) !== JSON.stringify(next.enabled)) syncWidgets()
     if (before.locked !== next.locked) applyLock()
+    if (before.spotifyClientId !== next.spotifyClientId) resetMusic()
     if (before.chat.mode !== next.chat.mode || before.chat.webProvider !== next.chat.webProvider) syncChatView()
     refreshTray()
     broadcastState()

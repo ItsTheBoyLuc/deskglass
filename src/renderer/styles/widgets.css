@@ -80,7 +80,7 @@ body.settings .glass { background: none; border: none; border-radius: 0; height:
 .music .controls button.main { width: 36px; height: 36px; background: var(--accent-m, var(--accent)); color: #000; border: none; font-size: 15px; }
 .music .notice { color: var(--warn); font-size: 11px; }
 .music .mstate { position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--space-2); align-items: center; justify-content: center; text-align: center; padding: var(--space-4); color: var(--text-dim); }
-@container (max-height: 135px) { .music .a, .music .times, .music .notice { display: none; } }
+@container (max-height: 135px) { .music .a, .music .times { display: none; } }
 @container (max-width: 330px) { .music .cover { display: none; } }
 
 /* chat in web mode: the embedded site sits between a 44px header and an 18px footer strip (see webchat.ts) */

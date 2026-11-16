@@ -20,6 +20,8 @@ const tokens = createTokenManager({
 })
 const client = createSpotifyClient({ fetchImpl: fetch, tokens })
 
+const IDLE_RECHECK_MS = 15_000
+const AFTER_CONTROL_DELAY_MS = 600
 let last: MusicState = { status: 'disconnected' }
 let backoffUntil = 0
 let premiumOnly = false // set when a control call was refused for a free account; cleared on (re)connect
@@ -35,10 +37,11 @@ export async function pollMusic(): Promise<MusicState> {
   const r = await client.getPlayback()
   switch (r.kind) {
     case 'ok': {
+      const fetchedAt = Date.now() // progress was read now, not after the (possibly slow) cover download
       const art = await loadArt(r.playback.artUrl)
       last = withNotice({
         status: 'playing',
-        track: { ...r.playback, artDataUrl: art?.dataUrl ?? null, accent: art?.accent ?? null, fetchedAt: Date.now() }
+        track: { ...r.playback, artDataUrl: art?.dataUrl ?? null, accent: art?.accent ?? null, fetchedAt }
       })
       break
     }
@@ -48,7 +51,9 @@ export async function pollMusic(): Promise<MusicState> {
     case 'error': last = { status: 'error', message: r.message }; break
     case 'idle': last = { status: 'idle' }; break
     case 'no-device': last = { status: 'no-device' }; break
-    default: last = { status: r.kind === 'not-connected' ? 'disconnected' : r.kind } // no-client-id | reauth
+    default: // not-connected | no-client-id | reauth: nothing to poll until the user acts, so do not hit the API every 4 s
+      last = { status: r.kind === 'not-connected' ? 'disconnected' : r.kind }
+      backoffUntil = Date.now() + IDLE_RECHECK_MS
   }
   return last
 }
@@ -56,7 +61,10 @@ export async function pollMusic(): Promise<MusicState> {
 export async function musicControl(action: ControlAction): Promise<MusicState> {
   const r = await client.control(action)
   switch (r.kind) {
-    case 'ok': backoffUntil = 0; return pollMusic()
+    case 'ok': // Spotify reports the new state a moment later; polling at once often returns the old one
+      backoffUntil = 0
+      await new Promise((resolve) => setTimeout(resolve, AFTER_CONTROL_DELAY_MS))
+      return pollMusic()
     case 'premium':
       premiumOnly = true
       return withNotice(last, 'Bediening vereist Spotify Premium: alleen weergave.')
@@ -70,6 +78,13 @@ export async function musicControl(action: ControlAction): Promise<MusicState> {
 }
 
 export const getMusicState = (): MusicState => last
+
+/** Settings changed (e.g. Client ID): forget cached state so the next poll starts from scratch. */
+export function resetMusic(): void {
+  tokens.invalidate()
+  backoffUntil = 0
+  premiumOnly = false
+}
 
 let connecting: Promise<FlowResult> | null = null
 

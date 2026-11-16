@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron'
 import { CH } from '../shared/ipc'
-import type { WidgetId } from '../shared/types'
+import type { MusicState, WidgetId } from '../shared/types'
 import { getSettings } from './store'
 import { createStatsSampler } from './services/stats'
 import { fetchWeather } from './services/weather'
@@ -48,13 +48,14 @@ function runMusic(win: BrowserWindow): () => void {
     if (busy || !alive(win) || !win.isVisible() || win.isMinimized()) return
     busy = true
     try {
-      const s = await pollMusic()
+      const s = await pollMusic().catch((): MusicState => ({ status: 'error', message: 'Spotify is tijdelijk niet bereikbaar.' }))
       if (alive(win)) win.webContents.send(CH.music, s)
     } finally {
       busy = false
     }
   }
   void tick()
+  win.on('show', () => void tick()) // the first tick runs before the window is visible: poll again as soon as it is
   const t = setInterval(tick, MUSIC_MS)
   return () => clearInterval(t)
 }
