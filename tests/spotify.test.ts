@@ -108,6 +108,30 @@ describe('token manager', () => {
     expect(f).toHaveBeenCalledTimes(1)
   })
 
+  it('backs off after a 429/5xx instead of hammering the token endpoint', async () => {
+    let t = 1_000_000
+    const f = vi.fn(async () => reply(429, undefined, { 'retry-after': '20' }))
+    const { tm } = make(f as unknown as typeof fetch, memoryStore('RT1'), () => t)
+    expect(await tm.getAccessToken()).toEqual({ ok: false, reason: 'network' })
+    expect(await tm.getAccessToken()).toEqual({ ok: false, reason: 'network' })
+    expect(f).toHaveBeenCalledTimes(1)
+    t += 21_000
+    await tm.getAccessToken()
+    expect(f).toHaveBeenCalledTimes(2)
+  })
+
+  it('disconnect wins over a refresh that is still in flight', async () => {
+    let release!: () => void
+    const f = vi.fn(async () => { await new Promise<void>((r) => { release = r }); return reply(200, { access_token: 'AT', expires_in: 3600, refresh_token: 'RT-rotated' }) })
+    const { tm, store } = make(f as unknown as typeof fetch)
+    const pending = tm.getAccessToken()
+    await new Promise((r) => setTimeout(r, 10))
+    await tm.disconnect()
+    release()
+    expect(await pending).toEqual({ ok: false, reason: 'not-connected' })
+    expect(store.value).toBeNull()
+  })
+
   it('disconnect deletes the stored token', async () => {
     const { tm, store } = make((async () => reply(200)) as unknown as typeof fetch)
     await tm.disconnect()
@@ -269,6 +293,17 @@ describe('auth flow (loopback callback)', () => {
     expect(second.ok).toBe(false)
     expect(!second.ok && second.error).toMatch(/poort/i)
     await first.done
+  })
+
+  it('is one-shot: replaying the callback does not exchange the code twice', async () => {
+    const exchange = vi.fn(async (_c: string, _v: string, _r: string) => ({ ok: true as const }))
+    const { done, opened } = start(exchange)
+    const u = await opened()
+    const url = `${u.searchParams.get('redirect_uri')}?code=ONCE&state=${u.searchParams.get('state')}`
+    await fetch(url)
+    await fetch(url).catch(() => undefined) // server may already be closed
+    await done
+    expect(exchange).toHaveBeenCalledTimes(1)
   })
 
   it('only serves the /callback path', async () => {

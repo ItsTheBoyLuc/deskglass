@@ -65,7 +65,7 @@ export function broadcastState(): void {
 }
 
 const rendererUrl = (id: string): { url?: string; file?: string } =>
-  process.env.ELECTRON_RENDERER_URL
+  !app.isPackaged && process.env.ELECTRON_RENDERER_URL
     ? { url: `${process.env.ELECTRON_RENDERER_URL}/index.html?w=${id}` }
     : { file: join(import.meta.dirname, '../renderer/index.html') }
 

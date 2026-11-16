@@ -29,4 +29,11 @@ body 13/400, small 11/400. Tabular numerals for all live numbers.
 - Focus: 2px `--accent` ring. Contrast >= 4.5:1 for body text on the tinted acrylic.
 
 ## Widgets (size px)
-clock 300x150 · stats 300x320 · weather 300x270 · agenda 340x400 · chat 380x480 · settings 540x600 (normal window).
+Default (M) sizes: clock 300x150 · stats 300x320 · weather 300x270 · agenda 340x400 · music 360x150 · chat 380x480 · settings 540x600 (normal window).
+S/M/L presets and min/max limits live in `src/shared/types.ts`. All widgets are resizable: use `cq*` units / container queries, never fixed pixel layouts.
+
+## Music widget
+Cover art left, title/artist/progress/controls right; blurred cover as backdrop (opacity .4) and the cover's average colour as accent (`--accent-m`, brightened for contrast). At small heights the artist/times collapse; at small widths the cover hides.
+
+## Edit mode
+Unlocked: dashed accent outline and a 18 px diagonal-grip resize handle bottom-right. Locked: neither, click-through where possible.

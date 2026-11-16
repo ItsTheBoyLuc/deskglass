@@ -14,7 +14,8 @@ export function isSpotifyImageUrl(raw: string): boolean {
 }
 
 export interface Art { dataUrl: string; accent: [number, number, number] | null }
-let cached: { url: string; art: Art | null } | null = null
+let cached: { url: string; art: Art | null; at: number } | null = null
+const RETRY_AFTER_FAILURE_MS = 30_000
 
 /**
  * Cover art is fetched here (main) and handed to the renderer as a data: URI, so the renderer's CSP can stay
@@ -22,11 +23,12 @@ let cached: { url: string; art: Art | null } | null = null
  */
 export async function loadArt(url: string | null): Promise<Art | null> {
   if (!url || !isSpotifyImageUrl(url)) return null
-  if (cached?.url === url) return cached.art
+  if (cached?.url === url && (cached.art || Date.now() - cached.at < RETRY_AFTER_FAILURE_MS)) return cached.art
   let art: Art | null = null
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000), redirect: 'error' })
     const type = (res.headers.get('content-type') ?? '').split(';')[0]!.trim()
+    if (Number(res.headers.get('content-length') ?? 0) > MAX_BYTES) throw new Error('too large')
     const buf = Buffer.from(await res.arrayBuffer())
     if (res.ok && TYPES.has(type) && buf.byteLength <= MAX_BYTES) {
       const img = nativeImage.createFromBuffer(buf)
@@ -40,6 +42,6 @@ export async function loadArt(url: string | null): Promise<Art | null> {
   } catch {
     art = null
   }
-  cached = { url, art }
+  cached = { url, art, at: Date.now() }
   return art
 }

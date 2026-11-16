@@ -18,10 +18,14 @@ Electron + TypeScript, `electron-vite` (Vite, plain CSS, no UI framework), `elec
 - `src/main/desktop.ts`: embeds windows into Progman (desktop layer) via koffi; falls back to HWND_BOTTOM pinning.
 - Pure, unit-tested logic: `positions.ts`, `secrets.ts`, `shared/settings.ts`, `services/chat/{sse,providers}.ts`, `services/ics.ts`.
 
+## v1.1 features
+Resizable widgets (main follows cursor, `positions.ts` clamps), Spotify (`services/spotify/*`, PKCE, port 8898), web-chat default mode (`webchat.ts`, `shared/webproviders.ts`). Pure/tested: `positions.ts`, `spotify/{pkce,tokens,api,connect}.ts`, `webproviders.ts`.
+
 ## Decisions worth knowing
 - **Desktop layer**: embedding (Progman child) survives Win+D but a child window gets NO acrylic blur, so the CSS tint is raised (`body.flat`). Bottom mode has real acrylic but Win+D hides the widgets. Default `auto` = embed, fall back to bottom.
 - Secrets use async `safeStorage` (sync API is deprecated in Electron 45). No plaintext fallback.
 - The ICS URL is treated as a secret (encrypted). Keys are never sent to the renderer, only `hasChatKey/hasIcsUrl`.
+- Web chat: we embed the site and never touch its cookies; no OAuth for AI subscriptions (not allowed). Spotify needs the user's own Client ID (32 hex), redirect URI http://127.0.0.1:8898/callback.
 - Dragging is main-driven (cursor polling), so it works in both desktop modes and with mixed DPI.
 - Dev and installed builds share the same userData folder (`%APPDATA%\DeskGlass`).
 

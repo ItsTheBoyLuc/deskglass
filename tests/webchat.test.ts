@@ -33,10 +33,15 @@ describe('isAllowedNavigation', () => {
 })
 
 describe('permissions and user agent', () => {
-  it('allows only clipboard permissions', () => {
-    expect(isPermissionAllowed('clipboard-sanitized-write')).toBe(true)
-    expect(isPermissionAllowed('clipboard-read')).toBe(true)
-    for (const p of ['media', 'geolocation', 'notifications', 'midi', 'openExternal', 'fullscreen', 'display-capture']) expect(isPermissionAllowed(p), p).toBe(false)
+  it('allows only clipboard WRITE, only for the provider origin', () => {
+    expect(isPermissionAllowed('clipboard-sanitized-write', 'claude', 'https://claude.ai')).toBe(true)
+    expect(isPermissionAllowed('clipboard-sanitized-write', 'claude', 'https://claude.ai/chat/1')).toBe(true)
+    expect(isPermissionAllowed('clipboard-sanitized-write', 'claude', 'https://ads.evil.com')).toBe(false)
+    expect(isPermissionAllowed('clipboard-sanitized-write', 'claude', 'https://chatgpt.com')).toBe(false)
+    expect(isPermissionAllowed('clipboard-read', 'claude', 'https://claude.ai')).toBe(false)
+    for (const p of ['media', 'geolocation', 'notifications', 'midi', 'openExternal', 'fullscreen', 'display-capture']) {
+      expect(isPermissionAllowed(p, 'claude', 'https://claude.ai'), p).toBe(false)
+    }
   })
   it('builds a normal Chrome user agent without the Electron token', () => {
     const ua = chromeUserAgent('130.0.6723.91')

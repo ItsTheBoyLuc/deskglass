@@ -71,7 +71,14 @@ export async function musicControl(action: ControlAction): Promise<MusicState> {
 
 export const getMusicState = (): MusicState => last
 
-export async function connectSpotify(): Promise<FlowResult> {
+let connecting: Promise<FlowResult> | null = null
+
+export function connectSpotify(): Promise<FlowResult> {
+  connecting ??= doConnect().finally(() => { connecting = null }) // a double click joins the running flow
+  return connecting
+}
+
+async function doConnect(): Promise<FlowResult> {
   const clientId = getSettings().spotifyClientId
   if (!clientId) return { ok: false, error: 'Vul eerst je Spotify Client ID in en sla op.' }
   const r = await runAuthFlow({

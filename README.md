@@ -9,7 +9,8 @@ klok + datum, systeemstatistieken, weer, agenda/taken en een AI-chat. UI in het 
 | Systeem | CPU, RAM, GPU (NVIDIA), schijf, netwerk ↑↓, CPU-temp (of `n/a`) |
 | Weer | Open-Meteo (geen sleutel), huidig + 3 dagen, 15 min verversen, offline-cache |
 | Agenda & taken | Lokale takenlijst + afspraken uit een (geheim) ICS-adres, alleen lezen |
-| AI-chat | Streaming chat via Anthropic (API-sleutel) of een OpenAI-compatibel endpoint (bijv. Ollama) |
+| Muziek | Spotify: albumhoes, titel, artiest, voortgang, play/pause/vorige/volgende (Authorization Code + PKCE, geen client secret) |
+| AI-chat | **Web-chat (standaard)**: claude.ai, chatgpt.com of gemini.google.com in een afgeschermd venster waar je zelf inlogt. Optioneel: eigen API/lokaal (Anthropic-sleutel of OpenAI-compatibel endpoint zoals Ollama) met streaming |
 
 ## Installeren (zonder dev-tools)
 
@@ -29,9 +30,38 @@ Tot je vergrendelt kun je elke widget verslepen; de plek wordt per widget en per
 Tray → **Instellingen…**
 
 - **Weer:** plaatsnaam. **Agenda:** plak het geheime iCal-adres (Google Agenda → *Instellingen → Geheim adres in iCal-indeling*).
-- **AI:** kies Anthropic (API-sleutel) of OpenAI-compatibel (Base-URL + model, sleutel optioneel; bijv. `http://localhost:11434/v1` voor Ollama).
+- **AI:** kies *Web-chat* (provider: Claude / ChatGPT / Gemini) of *API / lokaal*: Anthropic (API-sleutel) of OpenAI-compatibel (Base-URL + model, sleutel optioneel; bijv. `http://localhost:11434/v1` voor Ollama).
 - Sleutels en het ICS-adres worden **versleuteld** opgeslagen (Windows DPAPI via Electron `safeStorage`), nooit in platte JSON en nooit gelogd.
   Een API-sleutel gaat alleen naar `api.anthropic.com`, of naar jouw endpoint via https/localhost.
+
+## Widgets verplaatsen en vergroten
+
+Tray → **Widgets vergrendelen** uit = bewerkmodus: elke widget heeft een stippellijn en een **greep rechtsonder**. Sleep de kop (of de hele widget) om te verplaatsen,
+sleep de greep om het formaat te wijzigen. Elke widget heeft een minimum- en maximumformaat; de inhoud schaalt mee.
+Snelle formaten **S / M / L** staan in de tray (*Formaat*) en in Instellingen. Positie en formaat worden per widget en per monitor onthouden en
+teruggezet binnen het scherm als een monitor verdwijnt.
+
+## Spotify koppelen
+
+DeskGlass gebruikt jouw eigen (gratis) Spotify-app; er zit geen client secret in DeskGlass.
+
+1. Ga naar <https://developer.spotify.com/dashboard> → **Create app** (naam/omschrijving vrij).
+2. Kies bij *API/SDKs* de **Web API**.
+3. Voeg bij **Redirect URIs** exact toe: `http://127.0.0.1:8898/callback` (dus `127.0.0.1`, geen `localhost`, geen https, poort 8898) en sla op.
+4. Kopieer het **Client ID** (32 tekens).
+5. DeskGlass → Instellingen → *Muziek (Spotify)*: plak het Client ID, **Opslaan**, dan **Verbinden met Spotify**. Je browser opent; keur goed. Klaar.
+
+Scopes: `user-read-playback-state`, `user-modify-playback-state`, `user-read-currently-playing`. Het refresh-token wordt versleuteld opgeslagen
+(Windows DPAPI) en nooit gelogd; **Ontkoppelen** verwijdert het.
+**Let op:** afspeelbediening (play/pause/volgende/vorige) vereist dat de **eigenaar van de Spotify-app Premium heeft**; zonder Premium blijft de widget alleen-lezen
+(met een duidelijke melding). Is er geen actief apparaat, dan toont de widget "Open Spotify op een apparaat". De poort 8898 moet vrij zijn tijdens het verbinden.
+
+## AI-chat (web)
+
+Standaard laadt de chat-widget de site van je keuze (Claude, ChatGPT of Gemini) in een eigen, afgeschermd venster. **Jij logt zelf in op de site**; de sessie wordt onthouden.
+DeskGlass gebruikt of leest nooit je inloggegevens of cookies en doet **geen** "inloggen met Claude/ChatGPT"-koppeling (dat is niet toegestaan voor abonnementen).
+Het venster mag alleen navigeren binnen de domeinen van de gekozen aanbieder; andere links openen in je gewone browser; alleen het klembord is toegestaan als permissie.
+Staat Google- of Apple-inloggen embedded niet toe, log dan in met e-mail (Gemini heeft alleen Google-login; werkt dat niet, gebruik dan Claude of ChatGPT).
 
 ## Bureaublad-laag (belangrijk)
 

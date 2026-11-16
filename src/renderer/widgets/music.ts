@@ -40,14 +40,14 @@ export const mountMusic: Mount = (root, ctx) => {
   const play = btn('Afspelen of pauzeren', '⏵', () => act(state.track?.isPlaying ? 'pause' : 'play'), 'main')
   const next = btn('Volgende', '⏭', () => act('next'))
   const notice = h('div', { class: 'notice' })
-  const player = h('div', { class: 'row' },
+  const player = h('div', { class: 'mrow' },
     cover,
     h('div', { class: 'info' }, title, artist,
       h('div', { class: 'track' }, fill),
       h('div', { class: 'times' }, elapsed, total),
       h('div', { class: 'controls' }, prev, play, next),
       notice))
-  const msg = h('div', { class: 'msg' })
+  const msg = h('div', { class: 'mstate' })
   body.append(backdrop, player, msg)
 
   let state: MusicState = { status: 'disconnected' }

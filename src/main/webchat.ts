@@ -10,14 +10,17 @@ export const WEB_FOOTER_PX = 18
 
 const views = new Map<BrowserWindow, { view: WebContentsView; off: () => void }>()
 let sessionReady = false
+let activeProvider: WebProvider = 'claude'
+const OPEN_COOLDOWN_MS = 3000
+const GESTURE_WINDOW_MS = 2000
 
 function prepareSession(): void {
   if (sessionReady) return
   sessionReady = true
   const ses = session.fromPartition(PARTITION)
   ses.setUserAgent(chromeUserAgent(process.versions.chrome))
-  ses.setPermissionRequestHandler((_wc, permission, cb) => cb(isPermissionAllowed(permission)))
-  ses.setPermissionCheckHandler((_wc, permission) => isPermissionAllowed(permission))
+  ses.setPermissionRequestHandler((_wc, permission, cb, details) => cb(isPermissionAllowed(permission, activeProvider, details.requestingUrl)))
+  ses.setPermissionCheckHandler((_wc, permission, requestingOrigin) => isPermissionAllowed(permission, activeProvider, requestingOrigin))
 }
 
 function layout(win: BrowserWindow, view: WebContentsView): void {
@@ -42,6 +45,7 @@ export function detachWebChat(win: BrowserWindow): void {
 export function attachWebChat(win: BrowserWindow, provider: WebProvider): void {
   detachWebChat(win)
   prepareSession()
+  activeProvider = provider
   const view = new WebContentsView({
     webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true }
   })
@@ -57,8 +61,24 @@ export function attachWebChat(win: BrowserWindow, provider: WebProvider): void {
   views.set(win, { view, off: () => { win.removeListener('resize', onResize); win.removeListener('hide', onHide); win.removeListener('show', onShow) } })
 
   const wc = view.webContents
+  // Links go to the real browser only right after a real click/keypress and at most once per cooldown:
+  // a script calling window.open() must not be able to spam tabs or open phishing pages.
+  let lastGesture = 0
+  let lastOpen = 0
+  wc.on('input-event', (_e, input) => {
+    if (input.type === 'mouseDown' || input.type === 'keyDown') lastGesture = Date.now()
+  })
   wc.setWindowOpenHandler(({ url }) => {
-    if (/^https:\/\//i.test(url)) void shell.openExternal(url) // links the user clicks go to the real browser
+    const now = Date.now()
+    if (now - lastGesture < GESTURE_WINDOW_MS && now - lastOpen > OPEN_COOLDOWN_MS) {
+      try {
+        const u = new URL(url)
+        if (u.protocol === 'https:' && !u.username && !u.password) {
+          lastOpen = now
+          void shell.openExternal(u.href)
+        }
+      } catch { /* malformed URL: ignore */ }
+    }
     return { action: 'deny' }
   })
   const guard = (e: Electron.Event, url: string): void => { if (!isAllowedNavigation(provider, url)) e.preventDefault() }

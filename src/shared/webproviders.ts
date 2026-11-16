@@ -25,9 +25,13 @@ export function isAllowedNavigation(provider: WebProvider, raw: string): boolean
   return p.hosts.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`))
 }
 
-/** Only clipboard access is granted to remote chat pages; camera, mic, location, notifications... are denied. */
-export const isPermissionAllowed = (permission: string): boolean =>
-  permission === 'clipboard-sanitized-write' || permission === 'clipboard-read'
+/**
+ * Remote chat pages may only WRITE to the clipboard (copy buttons), and only the provider's own origin may ask.
+ * Reading the clipboard needs no permission for Ctrl+V; camera, mic, location, notifications... are always denied,
+ * and so is everything requested by third-party frames (captcha, ads, payment widgets).
+ */
+export const isPermissionAllowed = (permission: string, provider: WebProvider, requestingUrl: string): boolean =>
+  permission === 'clipboard-sanitized-write' && isAllowedNavigation(provider, requestingUrl)
 
 /** A normal Chrome UA (no "Electron/..." token), because some sites block or degrade unknown clients. */
 export const chromeUserAgent = (chromeVersion: string): string =>

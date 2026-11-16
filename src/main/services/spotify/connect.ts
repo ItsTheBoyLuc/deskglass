@@ -30,9 +30,10 @@ export function runAuthFlow(opts: FlowOptions): Promise<FlowResult> {
   return new Promise((resolve) => {
     let settled = false
     let redirectUri = ''
+    let exchanging = false
     const server = http.createServer((req, res) => {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1')
-      if (req.method !== 'GET' || url.pathname !== '/callback') { res.writeHead(404).end(); return }
+      if (settled || exchanging || req.method !== 'GET' || url.pathname !== '/callback') { res.writeHead(404).end(); return }
       if (url.searchParams.get('state') !== state) {
         res.writeHead(400, { 'content-type': 'text/html; charset=utf-8' }).end(page('Ongeldig verzoek', 'Start het verbinden opnieuw vanuit DeskGlass.'))
         return // keep waiting: a stray request must not abort the real flow
@@ -44,6 +45,7 @@ export function runAuthFlow(opts: FlowOptions): Promise<FlowResult> {
         return
       }
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(page('Verbonden met Spotify', 'Je kunt dit venster sluiten en terug naar DeskGlass gaan.'))
+      exchanging = true // a reload of the callback page must not replay a burned code
       exchange(code, verifier, redirectUri).then(finish, () => finish({ ok: false, error: 'Verbinden met Spotify mislukt.' }))
     })
 

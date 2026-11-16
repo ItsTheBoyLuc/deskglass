@@ -21,7 +21,7 @@ AI streaming = plain `fetch` + one shared SSE parser (no SDK).
 
 ## Architecture
 - One renderer page, loaded per window as `index.html?w=<id>`; `main.ts` mounts `widgets/<id>.ts`.
-- One frameless `BrowserWindow` per widget (`clock|stats|weather|agenda|chat`) plus a normal `settings` window.
+- One frameless `BrowserWindow` per widget (`clock|stats|weather|agenda|music|chat`) plus a normal `settings` window.
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. Renderer talks only via `window.deskglass` (preload, typed in `src/shared/ipc.ts`).
 - All network, keys, files live in main. Renderer CSP: `connect-src 'none'`.
 - Dragging = pointer events -> IPC -> main moves window (works for both desktop modes).
@@ -44,6 +44,12 @@ tests         positions, secrets, ics, sse/chat parsing
 - **Desktop layer**: try WorkerW embed (koffi); verify (parent set, window visible); else fallback `setAlwaysOnBottom` + HWND_BOTTOM every 2 s and re-pin on `blur/minimize/show`. Mode reported in tray + HANDOFF.
 - **Lock mode**: tray toggle. Unlocked = outline + draggable; locked = `setIgnoreMouseEvents(true)` where possible (chat/agenda/settings need input -> only click-through the non-interactive widgets; interactive widgets stay clickable but not draggable).
 - **Tray**: toggle each widget, lock/unlock, settings, autostart, quit. Single instance lock. Autostart via `app.setLoginItemSettings`.
+
+## v1.1 additions (resize, Spotify, web chat)
+- **Resize**: transparent frameless windows cannot be resized natively -> renderer corner handle (edit mode) -> IPC start/end -> main follows the cursor and `setBounds` (32 ms, only on change). Per-widget min/max (`WIDGET_LIMITS`), clamped to the monitor; S/M/L presets (`WIDGET_PRESETS`) via tray + settings. Size persisted per widget per monitor next to the position (`positions.ts`: `clampSize`, `resolveBounds`, `rememberBounds`). Content scales with CSS container queries (`cq*` units).
+- **Spotify** (`services/spotify/`): Authorization Code + PKCE, no client secret. `pkce.ts` (verifier/challenge/state/auth URL), `connect.ts` (one-shot loopback server on 127.0.0.1:8898, /callback only, state check, 3 min timeout), `tokens.ts` (refresh with 60 s margin, shared in-flight refresh, invalid_grant => forget token => reconnect prompt, refresh token via safeStorage only), `api.ts` (player + controls; 401 => refresh once; 429 => Retry-After; 403 PREMIUM_REQUIRED => read-only notice; 204/404 => no active device), `art.ts` (cover fetched in main from Spotify CDN hosts only, data: URI + average colour accent), polling 4 s only while the widget is visible; progress interpolated in the renderer.
+- **Web chat** (default chat mode): `WebContentsView` (partition `persist:ai-chat`, no preload, sandbox) under a 44 px header and 18 px footer strip. Navigation allowlist per provider (`shared/webproviders.ts`), other links -> system browser, only clipboard permission, normal Chrome UA. We never read or reuse the site's cookies/tokens and implement no OAuth for Claude/ChatGPT/Gemini.
+- Not done (v1.1): Windows media-session fallback for Spotify.
 
 ## Task list (status in HANDOFF.md)
 1. [x] Repo + .gitignore
