@@ -5,7 +5,7 @@ import { WIDGET_IDS, WIDGET_SIZES } from '../shared/types'
 import type { ActiveDesktopMode, AppState, WidgetId } from '../shared/types'
 import { isAutostart } from './autostart'
 import { attach } from './desktop'
-import { displayForRect, rememberPosition, resolvePosition } from './positions'
+import { clampToWorkArea, displayForRect, rememberPosition, resolvePosition } from './positions'
 import type { DisplayInfo, Point, Rect } from './positions'
 import { startRunner } from './runners'
 import { getSettings, secrets, store } from './store'
@@ -186,8 +186,11 @@ export function endDrag(win: BrowserWindow): void {
   const b = win.getBounds()
   const d = displayForRect(b, displays())
   if (!d) return
+  // Dropping a widget outside the screen snaps it back inside the work area (and that is what we remember).
+  const p = clampToWorkArea({ x: b.x, y: b.y }, WIDGET_SIZES[id], d.workArea)
+  if (p.x !== b.x || p.y !== b.y) win.setBounds({ ...p, ...WIDGET_SIZES[id] })
   const all = store.get('positions')
-  store.set('positions', { ...all, [id]: rememberPosition(all[id], d.id, { x: b.x, y: b.y }) })
+  store.set('positions', { ...all, [id]: rememberPosition(all[id], d.id, p) })
 }
 
 // --- settings window (a normal window, not a desktop widget) ---

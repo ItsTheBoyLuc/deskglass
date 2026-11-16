@@ -13,7 +13,7 @@ function menu(): Menu {
     { label: `DeskGlass (${buildState().desktopMode === 'workerw' ? 'bureaublad-laag' : 'onderaan'})`, enabled: false },
     { type: 'separator' },
     ...WIDGET_IDS.map((id) => ({
-      label: WIDGET_TITLES[id],
+      label: WIDGET_TITLES[id].replace(/&/g, '&&'), // a single "&" would be eaten as an accelerator marker
       type: 'checkbox' as const,
       checked: s.enabled[id],
       click: (): void => { updateSettings({ enabled: { [id]: !getSettings().enabled[id] } }); syncWidgets(); refreshTray() }
