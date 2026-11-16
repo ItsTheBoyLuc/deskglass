@@ -14,7 +14,7 @@ describe('applySettingsPatch', () => {
     expect(next.city).toBe(DEFAULT_SETTINGS.city)
     expect(next.locked).toBe(DEFAULT_SETTINGS.locked)
     expect(next.clockSeconds).toBe(true)
-    expect((next as Record<string, unknown>).evil).toBeUndefined()
+    expect((next as unknown as Record<string, unknown>).evil).toBeUndefined()
   })
 
   it('merges widget enabled flags per widget', () => {

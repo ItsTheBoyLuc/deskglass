@@ -1,0 +1,59 @@
+/* clock */
+.clock { align-items: center; justify-content: center; text-align: center; gap: 0; }
+.clock .time { font-size: 56px; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
+.clock .secs { font-size: 24px; font-weight: 400; color: var(--text-dim); margin-left: 4px; }
+.clock .date { color: var(--text-dim); font-size: 14px; margin-top: var(--space-1); }
+.clock .date::first-letter { text-transform: uppercase; }
+
+/* stats */
+.stat { display: grid; grid-template-columns: 52px 1fr 64px; align-items: center; gap: var(--space-2); }
+.stat .label { color: var(--text-dim); }
+.stat .value { text-align: right; }
+.meter { height: 6px; border-radius: 3px; background: var(--bg-card); overflow: hidden; }
+.meter > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width 400ms var(--ease), background 200ms; }
+.meter > i.warn { background: var(--warn); }
+.meter > i.bad { background: var(--bad); }
+.net { display: flex; justify-content: space-between; color: var(--text-dim); }
+.sub { color: var(--text-faint); font-size: 11px; text-align: right; margin-top: -4px; }
+
+/* weather */
+.now { display: flex; align-items: center; gap: var(--space-3); }
+.now .emoji { font-size: 44px; line-height: 1; }
+.now .temp { font-size: 40px; font-weight: 600; line-height: 1; }
+.now .meta { color: var(--text-dim); font-size: 12px; }
+.days { display: flex; flex-direction: column; gap: var(--space-1); margin-top: auto; }
+.day { display: grid; grid-template-columns: 44px 28px 1fr auto; align-items: center; gap: var(--space-2); padding: 4px 8px; background: var(--bg-card); border-radius: var(--radius-sm); transition: background 120ms; }
+.day:hover { background: var(--bg-card-hover); }
+.day .rain { color: var(--accent); font-size: 11px; }
+
+/* agenda */
+.section-title { font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-top: var(--space-1); }
+.row { display: flex; align-items: center; gap: var(--space-2); padding: 4px 8px; background: var(--bg-card); border-radius: var(--radius-sm); transition: background 120ms; }
+.row:hover { background: var(--bg-card-hover); }
+.row .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.done .grow { text-decoration: line-through; color: var(--text-faint); }
+.row .when { color: var(--accent); font-size: 11px; min-width: 62px; }
+.row .x { background: none; border: none; color: var(--text-faint); padding: 0 4px; }
+.row .x:hover { color: var(--bad); }
+.add { display: flex; gap: var(--space-2); }
+
+/* chat */
+.messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); user-select: text; }
+.messages::-webkit-scrollbar { width: 6px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.msg { max-width: 88%; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--bg-card); white-space: pre-wrap; word-break: break-word; }
+.msg.user { align-self: flex-end; background: rgba(96, 205, 255, 0.18); }
+.msg.err { color: var(--bad); }
+.composer { display: flex; gap: var(--space-2); align-items: flex-end; }
+.composer textarea { resize: none; height: 54px; }
+
+/* settings (normal window) */
+body.settings { overflow: auto; background: #1b1b1f; user-select: text; }
+body.settings .glass { background: none; border: none; border-radius: 0; height: auto; min-height: 100%; gap: var(--space-4); }
+.field { display: flex; flex-direction: column; gap: var(--space-1); }
+.field > label, .group-title { font-size: 12px; color: var(--text-dim); }
+.group { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); background: var(--bg-card); border-radius: var(--radius-sm); }
+.group-title { font-weight: 600; color: var(--text); font-size: 13px; }
+.inline { display: flex; gap: var(--space-2); align-items: center; }
+.inline.wrap { flex-wrap: wrap; gap: var(--space-3); }
+.check { display: flex; align-items: center; gap: var(--space-2); }

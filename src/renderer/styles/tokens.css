@@ -1,0 +1,23 @@
+:root {
+  color-scheme: dark;
+  --bg-tint: rgba(20, 22, 28, 0.38);
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-card-hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: rgba(255, 255, 255, 0.92);
+  --text-dim: rgba(255, 255, 255, 0.62);
+  --text-faint: rgba(255, 255, 255, 0.38);
+  --accent: #60cdff;
+  --ok: #6ccb5f;
+  --warn: #fce100;
+  --bad: #ff7a7a;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --font: 'Segoe UI Variable Text', 'Segoe UI Variable Display', 'Segoe UI', Inter, system-ui, sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}

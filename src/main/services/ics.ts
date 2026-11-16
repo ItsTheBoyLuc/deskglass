@@ -1,4 +1,5 @@
 import ical from 'node-ical'
+import type { CalendarResponse, VEvent } from 'node-ical'
 import type { CalEvent } from '../../shared/types'
 
 export class IcsError extends Error {}
@@ -22,7 +23,7 @@ export function normalizeIcsUrl(input: string): string {
 /** Parse ICS text into upcoming events (recurrences, EXDATE and ongoing multi-day events handled by node-ical). */
 export function parseEvents(text: string, from: Date, to: Date): CalEvent[] {
   if (!/BEGIN:VCALENDAR/i.test(text)) throw new IcsError('Dit is geen geldige agenda (ICS)')
-  let parsed: ical.CalendarResponse
+  let parsed: CalendarResponse
   try {
     parsed = ical.parseICS(text)
   } catch {
@@ -31,7 +32,7 @@ export function parseEvents(text: string, from: Date, to: Date): CalEvent[] {
   const out: CalEvent[] = []
   for (const item of Object.values(parsed)) {
     if (!item || item.type !== 'VEVENT') continue
-    const ev = item as ical.VEvent
+    const ev = item as VEvent
     try {
       const instances = ical.expandRecurringEvent(ev, { from, to, expandOngoing: true, maxIterations: 2000 })
       for (const inst of instances) {
