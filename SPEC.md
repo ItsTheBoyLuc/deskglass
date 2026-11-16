@@ -47,13 +47,13 @@ tests         positions, secrets, ics, sse/chat parsing
 
 ## Task list (status in HANDOFF.md)
 1. [x] Repo + .gitignore
-2. [ ] Scaffold electron-vite, vitest, lint/typecheck scripts
-3. [ ] Core: store, positions (TDD), windows, tray, desktop layer, lock mode, preload/IPC
-4. [ ] Clock -> Stats -> Weather -> Agenda (ICS TDD) -> Chat (SSE + secrets TDD); review each
-5. [ ] Settings window (city, ICS URL, AI provider, clock seconds, autostart)
-6. [ ] Icon, electron-builder (nsis + portable), `npm run dist`
-7. [ ] Release workflow, README, CLAUDE.md, HANDOFF.md
-8. [ ] security review, verification loop, packaged smoke test, perf check
+2. [x] Scaffold electron-vite, vitest, lint/typecheck scripts
+3. [x] Core: store, positions (TDD), windows, tray, desktop layer, lock mode, preload/IPC
+4. [x] Clock -> Stats -> Weather -> Agenda (ICS TDD) -> Chat (SSE + secrets TDD); review each
+5. [x] Settings window (city, ICS URL, AI provider, clock seconds, autostart)
+6. [x] Icon, electron-builder (nsis + portable), `npm run dist`
+7. [x] Release workflow, README, CLAUDE.md, HANDOFF.md
+8. [x] security review, verification loop, packaged smoke test, perf check
 
 ## Non-goals (v1)
 Auto-update, code signing, macOS/Linux, widget resizing, ICS write access, multi-calendar.
