@@ -36,4 +36,4 @@ S/M/L presets and min/max limits live in `src/shared/types.ts`. All widgets are 
 Cover art left, title/artist/progress/controls right; blurred cover as backdrop (opacity .4) and the cover's average colour as accent (`--accent-m`, brightened for contrast). At small heights the artist/times collapse; at small widths the cover hides.
 
 ## Edit mode
-Unlocked: dashed accent outline and a 18 px diagonal-grip resize handle bottom-right. Locked: neither, click-through where possible.
+Unlocked: dashed accent outline and a 18 px diagonal-grip resize handle bottom-right. Locked: neither outline nor handle; nothing else changes (widgets stay clickable and behind all windows).

@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enabled: { clock: true, stats: true, weather: true, agenda: true, music: true, chat: true },
   locked: false,
   clockSeconds: false,
+  clockHour12: false,
   city: 'Amsterdam',
   chat: { mode: 'web', webProvider: 'claude', provider: 'anthropic', model: 'claude-sonnet-5-5', baseUrl: 'http://localhost:11434/v1' },
   spotifyClientId: '',
@@ -70,6 +71,7 @@ export function applySettingsPatch(base: Settings, patch: unknown): Settings {
     city,
     locked: typeof patch.locked === 'boolean' ? patch.locked : base.locked,
     clockSeconds: typeof patch.clockSeconds === 'boolean' ? patch.clockSeconds : base.clockSeconds,
+    clockHour12: typeof patch.clockHour12 === 'boolean' ? patch.clockHour12 : base.clockHour12,
     desktopMode: MODES.includes(patch.desktopMode as DesktopMode) ? (patch.desktopMode as DesktopMode) : base.desktopMode
   }
 }

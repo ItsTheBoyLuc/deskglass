@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampSize, clampToWorkArea, rememberBounds, rememberPosition, resolveBounds, resolvePosition } from '../src/main/positions'
+import { clampSize, clampToWorkArea, gestureBounds, rememberBounds, rememberPosition, resolveBounds, resolvePosition } from '../src/main/positions'
 import type { DisplayInfo } from '../src/main/positions'
 
 const d1: DisplayInfo = { id: 1, workArea: { x: 0, y: 0, width: 1920, height: 1040 } }
@@ -107,5 +107,26 @@ describe('resolveBounds / rememberBounds', () => {
   it('rememberPosition keeps an existing size for that monitor', () => {
     const a = rememberBounds(undefined, 1, { x: 1, y: 2, width: 300, height: 200 })
     expect(rememberPosition(a, 1, { x: 5, y: 6 }).byDisplay['1']).toEqual({ x: 5, y: 6, width: 300, height: 200 })
+  })
+})
+
+describe('gestureBounds (lock state)', () => {
+  const origin = { x: 100, y: 100, width: 300, height: 150 }
+  const room = { x: 100, y: 100, width: 1000, height: 800 }
+
+  it('locked: neither move nor resize changes the bounds', () => {
+    expect(gestureBounds('move', origin, { x: 50, y: 60 }, limits, room, true)).toEqual(origin)
+    expect(gestureBounds('resize', origin, { x: 50, y: 60 }, limits, room, true)).toEqual(origin)
+  })
+  it('unlocked: move shifts the window, resize grows it within the limits', () => {
+    expect(gestureBounds('move', origin, { x: 50, y: -20 }, limits, room, false)).toEqual({ x: 150, y: 80, width: 300, height: 150 })
+    expect(gestureBounds('resize', origin, { x: 50, y: 60 }, limits, room, false)).toEqual({ x: 100, y: 100, width: 350, height: 210 })
+    expect(gestureBounds('resize', origin, { x: 900, y: 900 }, limits, room, false)).toEqual({ x: 100, y: 100, width: 600, height: 400 })
+    expect(gestureBounds('resize', origin, { x: -500, y: -500 }, limits, room, false)).toEqual({ x: 100, y: 100, width: 200, height: 100 })
+  })
+  it('lock then unlock again: the same gesture works again (lock keeps no state)', () => {
+    const delta = { x: 10, y: 10 }
+    expect(gestureBounds('move', origin, delta, limits, room, true)).toEqual(origin)
+    expect(gestureBounds('move', origin, delta, limits, room, false)).toEqual({ ...origin, x: 110, y: 110 })
   })
 })

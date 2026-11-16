@@ -1,6 +1,7 @@
 import { h, frame } from '../dom'
 import type { Mount } from '../dom'
 import { fmtDate } from '../format'
+import { formatClock } from '../../shared/clock'
 
 export const mountClock: Mount = (root, ctx) => {
   const { el, body } = frame('Klok', { dragAll: true })
@@ -15,12 +16,13 @@ export const mountClock: Mount = (root, ctx) => {
   let timer: number | undefined
   const render = (): void => {
     const now = new Date()
-    const hm = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
-    const withSeconds = ctx.state().settings.clockSeconds
-    time.replaceChildren(hm)
-    if (withSeconds) time.append(h('span', { class: 'secs', text: String(now.getSeconds()).padStart(2, '0') }))
+    const { clockSeconds, clockHour12 } = ctx.state().settings
+    const p = formatClock(now, clockHour12, clockSeconds)
+    time.replaceChildren(p.time)
+    if (p.seconds) time.append(h('span', { class: 'secs', text: `:${p.seconds}` }))
+    if (p.period) time.append(h('span', { class: 'ampm', text: p.period }))
     date.textContent = fmtDate.format(now)
-    schedule(now, withSeconds)
+    schedule(now, clockSeconds)
   }
   // Wake exactly on the next second/minute boundary instead of polling: ~zero idle CPU.
   const schedule = (now: Date, withSeconds: boolean): void => {

@@ -37,11 +37,17 @@ export const mountSettings: Mount = (root, ctx) => {
   const page = h('section', { class: 'glass' }, h('h1', { text: 'DeskGlass instellingen', style: 'font-size:18px;font-weight:600' }))
   root.append(page)
 
+  const hourFormat = h('select', {}, h('option', { value: '24', text: '24-uurs' }), h('option', { value: '12', text: '12-uurs (AM/PM)' }))
+  hourFormat.value = s().clockHour12 ? '12' : '24'
+  hourFormat.addEventListener('change', () => set({ clockHour12: hourFormat.value === '12' }))
+  ctx.onState(() => { hourFormat.value = s().clockHour12 ? '12' : '24' })
+
   const widgets = h('div', { class: 'group' }, h('div', { class: 'group-title', text: 'Widgets' }),
     h('div', { class: 'inline wrap' }, ...WIDGET_IDS.map((id) =>
       checkbox(ctx, WIDGET_TITLES[id], () => s().enabled[id], (v) => set({ enabled: { [id]: v } })))),
     checkbox(ctx, 'Widgets vergrendelen (niet te verslepen)', () => s().locked, (v) => set({ locked: v })),
-    checkbox(ctx, 'Seconden tonen op de klok', () => s().clockSeconds, (v) => set({ clockSeconds: v })))
+    checkbox(ctx, 'Seconden tonen op de klok', () => s().clockSeconds, (v) => set({ clockSeconds: v })),
+    field('Klok: tijdnotatie', hourFormat))
 
   const city = h('input', { type: 'text', value: s().city, maxLength: 80 })
   const weather = h('div', { class: 'group' }, h('div', { class: 'group-title', text: 'Weer' }),
@@ -133,12 +139,16 @@ export const mountSettings: Mount = (root, ctx) => {
     h('div', { class: 'hint', text: 'Afspeelbediening werkt alleen als de eigenaar van de Spotify-app Premium heeft; anders blijft de widget alleen-lezen.' }))
 
   // --- Widget sizes (S / M / L) ---
+  const presetButtons: HTMLButtonElement[] = []
+  const syncPresets = (): void => presetButtons.forEach((b) => { b.disabled = s().locked })
+  ctx.onState(syncPresets)
   const presets = h('div', { class: 'group' }, h('div', { class: 'group-title', text: 'Formaat widgets' }),
     h('div', { class: 'presets' }, ...WIDGET_IDS.flatMap((id) => [
       h('span', { text: WIDGET_TITLES[id] }),
-      h('div', { class: 'seg' }, ...SIZE_PRESETS.map((p) => h('button', { text: p, title: WIDGET_TITLES[id] + ' ' + p, onClick: () => void ctx.api.setPreset(id, p) })))
+      h('div', { class: 'seg' }, ...SIZE_PRESETS.map((p) => { const b = h('button', { text: p, title: WIDGET_TITLES[id] + ' ' + p, onClick: () => void ctx.api.setPreset(id, p) }); presetButtons.push(b); return b }))
     ])),
-    h('div', { class: 'hint', text: 'Of sleep de hoek van een widget terwijl die ontgrendeld is.' }))
+    h('div', { class: 'hint', text: 'Of sleep de hoek van een widget terwijl die ontgrendeld is. Vergrendeld = positie en formaat staan vast.' }))
+  syncPresets()
 
   const mode = h('select', {}, h('option', { value: 'auto', text: 'Automatisch (bureaublad-laag proberen)' }), h('option', { value: 'bottom', text: 'Onderaan houden (echte blur, verdwijnt bij Win+D)' }), h('option', { value: 'workerw', text: 'Bureaublad-laag (WorkerW)' }))
   mode.value = s().desktopMode

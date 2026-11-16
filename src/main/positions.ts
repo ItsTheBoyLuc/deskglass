@@ -88,6 +88,18 @@ export function resolveBounds(
   return { ...point, ...size }
 }
 
+export type GestureKind = 'move' | 'resize'
+
+/**
+ * Window bounds while dragging or resizing. A locked widget never changes: lock means exactly this and nothing else
+ * (no click-through, no z-order or visibility change).
+ */
+export function gestureBounds(kind: GestureKind, origin: Rect, delta: Point, limits: Limits, room: Rect, locked: boolean): Rect {
+  if (locked) return origin
+  if (kind === 'move') return { x: origin.x + delta.x, y: origin.y + delta.y, width: origin.width, height: origin.height }
+  return { x: origin.x, y: origin.y, ...clampSize({ width: origin.width + delta.x, height: origin.height + delta.y }, limits, room) }
+}
+
 /** Display whose work area overlaps the window most (falls back to the closest centre). */
 export function displayForRect(r: Rect, displays: DisplayInfo[]): DisplayInfo | undefined {
   let best: DisplayInfo | undefined

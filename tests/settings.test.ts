@@ -60,6 +60,14 @@ describe('applySettingsPatch', () => {
     expect(applySettingsPatch(set, { spotifyClientId: 42 } as never).spotifyClientId).toBe(id)
   })
 
+  it('clock: 24h by default, 12h switch only accepts booleans', () => {
+    expect(DEFAULT_SETTINGS.clockHour12).toBe(false)
+    expect(applySettingsPatch(DEFAULT_SETTINGS, { clockHour12: true }).clockHour12).toBe(true)
+    const on = applySettingsPatch(DEFAULT_SETTINGS, { clockHour12: true })
+    expect(applySettingsPatch(on, { clockHour12: 'yes' } as never).clockHour12).toBe(true)
+    expect(applySettingsPatch(on, { clockHour12: false }).clockHour12).toBe(false)
+  })
+
   it('includes the music widget in enabled flags', () => {
     expect(DEFAULT_SETTINGS.enabled.music).toBe(true)
     expect(applySettingsPatch(DEFAULT_SETTINGS, { enabled: { music: false } }).enabled.music).toBe(false)

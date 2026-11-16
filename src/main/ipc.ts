@@ -3,7 +3,7 @@ import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import { CH } from '../shared/ipc'
 import type { SecretResult } from '../shared/ipc'
 import type { SecretName } from '../shared/types'
-import { applyLock, applyPreset, syncChatView, broadcastState, buildState, endGesture, isOurWindow, isSettingsWindow, openSettings, startDrag, startResize, syncWidgets } from './windows'
+import { applyPreset, saveAllBounds, syncChatView, broadcastState, buildState, endGesture, isOurWindow, isSettingsWindow, openSettings, startDrag, startResize, syncWidgets } from './windows'
 import { SIZE_PRESETS, WIDGET_IDS } from '../shared/types'
 import type { SizePreset, WidgetId } from '../shared/types'
 import { getSettings, secrets, updateSettings } from './store'
@@ -57,7 +57,7 @@ export function registerIpc(): void {
     const before = getSettings()
     const next = updateSettings(patch)
     if (JSON.stringify(before.enabled) !== JSON.stringify(next.enabled)) syncWidgets()
-    if (before.locked !== next.locked) applyLock()
+    if (!before.locked && next.locked) saveAllBounds()
     if (before.spotifyClientId !== next.spotifyClientId) resetMusic()
     if (before.chat.mode !== next.chat.mode || before.chat.webProvider !== next.chat.webProvider) syncChatView()
     refreshTray()

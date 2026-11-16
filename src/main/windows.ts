@@ -5,14 +5,12 @@ import { WIDGET_IDS, WIDGET_LIMITS, WIDGET_PRESETS, WIDGET_SIZES } from '../shar
 import type { ActiveDesktopMode, AppState, SizePreset, WidgetId } from '../shared/types'
 import { isAutostart } from './autostart'
 import { anyMouseButtonDown, attach } from './desktop'
-import { clampSize, clampToWorkArea, displayForRect, rememberBounds, resolveBounds } from './positions'
+import { clampSize, clampToWorkArea, displayForRect, gestureBounds, rememberBounds, resolveBounds } from './positions'
 import type { DisplayInfo, Point, Rect } from './positions'
 import { startRunner } from './runners'
 import { attachWebChat, detachWebChat } from './webchat'
 import { getSettings, secrets, store } from './store'
 
-/** Widgets that take mouse/keyboard input even when "locked" (they can't be click-through). */
-const INTERACTIVE: ReadonlySet<WidgetId> = new Set(['agenda', 'music', 'chat'])
 const MARGIN = 24
 const GAP = 16
 
@@ -120,7 +118,6 @@ function createWidget(id: WidgetId): BrowserWindow {
     if (id === 'chat') syncChatView()
     onModeChange?.()
     win.showInactive()
-    applyLock(id)
     broadcastState()
   })
   stops.set(id, startRunner(id, win))
@@ -147,14 +144,6 @@ export function syncChatView(): void {
   else detachWebChat(win)
 }
 
-export function applyLock(id?: WidgetId): void {
-  const locked = getSettings().locked
-  for (const [wid, w] of widgets) {
-    if (id && wid !== id) continue
-    if (!w.isDestroyed()) w.setIgnoreMouseEvents(locked && !INTERACTIVE.has(wid))
-  }
-}
-
 /** Create/destroy windows so they match settings.enabled. Destroying frees the renderer process. */
 export function syncWidgets(): void {
   const enabled = getSettings().enabled
@@ -163,7 +152,6 @@ export function syncWidgets(): void {
     if (enabled[id] && !win) createWidget(id)
     else if (!enabled[id] && win) win.close()
   }
-  applyLock()
   broadcastState()
 }
 
@@ -206,11 +194,8 @@ function startGesture(win: BrowserWindow, kind: Gesture): void {
     const age = Date.now() - startedAt
     if (age > MAX_GESTURE_MS || (age > BUTTON_GRACE_MS && anyMouseButtonDown() === false)) return endGesture(win)
     const c = screen.getCursorScreenPoint()
-    const dx = c.x - cursor0.x
-    const dy = c.y - cursor0.y
-    const next: Rect = kind === 'move'
-      ? { x: origin.x + dx, y: origin.y + dy, width: origin.width, height: origin.height }
-      : { x: origin.x, y: origin.y, ...clampSize({ width: origin.width + dx, height: origin.height + dy }, WIDGET_LIMITS[id], room) }
+    // locked is read every tick: locking in the middle of a drag freezes the widget where it is
+    const next = gestureBounds(kind, origin, { x: c.x - cursor0.x, y: c.y - cursor0.y }, WIDGET_LIMITS[id], room, getSettings().locked)
     const key = `${next.x},${next.y},${next.width},${next.height}`
     if (key === last) return // only touch the window when something changed
     last = key
@@ -244,8 +229,14 @@ export function endGesture(win: BrowserWindow): void {
   if (id && !win.isDestroyed()) saveBounds(id, win)
 }
 
-/** S / M / L size preset for one widget (tray and settings). */
+/** Remember where every widget is right now (done when the widgets get locked). */
+export function saveAllBounds(): void {
+  for (const [id, w] of widgets) if (!w.isDestroyed()) saveBounds(id, w)
+}
+
+/** S / M / L size preset for one widget (tray and settings). Resizing is off while locked. */
 export function applyPreset(id: WidgetId, preset: SizePreset): void {
+  if (getSettings().locked) return
   const win = widgets.get(id)
   const target = WIDGET_PRESETS[id]?.[preset]
   if (!win || win.isDestroyed() || !target) return

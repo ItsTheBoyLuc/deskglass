@@ -42,7 +42,7 @@ tests         positions, secrets, ics, sse/chat parsing
 - **Agenda**: tasks local (CRUD, persisted). ICS URL fetched in main (https/http only, 10 s timeout, 5 MB cap), parsed with node-ical, next 7 days incl. recurrences; invalid URL / network error -> inline Dutch error, cached events still shown.
 - **Chat**: providers `anthropic` (key) or `openai-compat` (baseUrl+model, optional key). Streaming via `chat:chunk` events, cancel, per-session history in memory, "nieuwe chat" resets. Keys main-only.
 - **Desktop layer**: try WorkerW embed (koffi); verify (parent set, window visible); else fallback `setAlwaysOnBottom` + HWND_BOTTOM every 2 s and re-pin on `blur/minimize/show`. Mode reported in tray + HANDOFF.
-- **Lock mode**: tray toggle. Unlocked = outline + draggable; locked = `setIgnoreMouseEvents(true)` where possible (chat/agenda/settings need input -> only click-through the non-interactive widgets; interactive widgets stay clickable but not draggable).
+- **Lock mode**: tray toggle + settings. Locked = position and size frozen (`gestureBounds` returns the origin, presets ignored), outlines and resize handles hidden. NOTHING else changes: no click-through (`setIgnoreMouseEvents` was removed: it flips WS_EX_LAYERED on the HWND, which turned embedded widgets into empty grey acrylic blocks drawn on top of other windows), no z-order or visibility change, all controls stay clickable. Position/size are saved when locking; the lock state persists.
 - **Tray**: toggle each widget, lock/unlock, settings, autostart, quit. Single instance lock. Autostart via `app.setLoginItemSettings`.
 
 ## Second-brief additions (resize, Spotify, web chat)

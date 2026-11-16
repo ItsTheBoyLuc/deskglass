@@ -1,7 +1,8 @@
 /* clock */
 .clock { align-items: center; justify-content: center; text-align: center; gap: 0; }
 .clock .time { font-size: clamp(28px, min(24cqw, 44cqh), 160px); font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
-.clock .secs { font-size: 0.42em; font-weight: 400; color: var(--text-dim); margin-left: 4px; }
+.clock .ampm { font-size: 0.34em; font-weight: 500; color: var(--text-dim); margin-left: 6px; }
+.clock .secs { font-size: 0.42em; font-weight: 400; color: var(--text-dim); margin-left: 1px; }
 .clock .date { color: var(--text-dim); font-size: clamp(11px, min(5.2cqw, 12cqh), 30px); margin-top: var(--space-1); }
 .clock .date::first-letter { text-transform: uppercase; }
 

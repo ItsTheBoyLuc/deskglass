@@ -52,6 +52,8 @@ export interface Settings {
   enabled: Record<WidgetId, boolean>
   locked: boolean
   clockSeconds: boolean
+  /** false = 24-uurs (14:05), true = 12-uurs (2:05 PM) */
+  clockHour12: boolean
   city: string
   chat: { mode: ChatMode; webProvider: WebProvider; provider: ChatProvider; model: string; baseUrl: string }
   /** Public identifier of the user's own Spotify app (PKCE: no secret needed). */
