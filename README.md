@@ -1,105 +1,108 @@
 # DeskGlass
 
-Donkere glas-widgets die **op je bureaublad** leven (achter al je vensters) voor Windows 11:
-klok + datum, systeemstatistieken, weer, agenda/taken en een AI-chat. UI in het Nederlands.
+Dark-glass desktop widgets for **Windows 11**. The widgets live *on* your desktop, behind all your other windows, and survive
+**Win+D** (Show desktop). The app's interface is in Dutch; this documentation is in English.
 
-| Widget | Wat |
+| Widget | What it does |
 |---|---|
-| Klok | Grote klok + Nederlandse datum, optioneel seconden |
-| Systeem | CPU, RAM, GPU (NVIDIA), schijf, netwerk ↑↓, CPU-temp (of `n/a`) |
-| Weer | Open-Meteo (geen sleutel), huidig + 3 dagen, 15 min verversen, offline-cache |
-| Agenda & taken | Lokale takenlijst + afspraken uit een (geheim) ICS-adres, alleen lezen |
-| Muziek | Spotify: albumhoes, titel, artiest, voortgang, play/pause/vorige/volgende (Authorization Code + PKCE, geen client secret) |
-| AI-chat | **Web-chat (standaard)**: claude.ai, chatgpt.com of gemini.google.com in een afgeschermd venster waar je zelf inlogt. Optioneel: eigen API/lokaal (Anthropic-sleutel of OpenAI-compatibel endpoint zoals Ollama) met streaming |
+| **Clock** | Large clock with a Dutch date. 24-hour (`14:05`) or 12-hour (`2:05 PM`) format, optional seconds |
+| **System** | CPU, RAM, GPU (NVIDIA), disk, network up/down, CPU temperature (shows `n/a` when unreadable) |
+| **Weather** | Open-Meteo (no API key), configurable city, current + 3-day forecast, refreshes every 15 min, cached for offline |
+| **Agenda & tasks** | Local to-do list plus upcoming events from an ICS URL (for example a Google Calendar secret iCal address), read-only |
+| **Music** | Spotify now playing: cover art, title, artist, progress, play/pause/previous/next (Authorization Code + PKCE, no client secret) |
+| **AI chat** | *Web mode (default):* claude.ai, chatgpt.com or gemini.google.com inside a locked-down view where you log in yourself. *API/local mode (optional):* streaming chat via the Anthropic API or any OpenAI-compatible endpoint such as Ollama |
 
-## Installeren (zonder dev-tools)
+## Download and install
 
-Download van de [Releases-pagina](https://github.com/ItsTheBoyLuc/deskglass/releases):
+Get the latest build from the [Releases page](https://github.com/ItsTheBoyLuc/deskglass/releases):
 
-- `DeskGlass-Setup-<versie>.exe` – installer (per gebruiker, geen admin nodig, snelkoppelingen, nette uninstall)
-- `DeskGlass-<versie>-portable.exe` – één los exe-bestand, geen installatie
+- `DeskGlass-Setup-<version>.exe` - installer (per user, no admin rights, desktop and Start menu shortcuts, clean uninstall)
+- `DeskGlass-<version>-portable.exe` - a single file, no installation
 
-> **SmartScreen-waarschuwing:** de exe is niet digitaal ondertekend, dus Windows toont "Windows heeft uw pc beveiligd".
-> Klik op **Meer info → Toch uitvoeren**. Code signing is een optionele latere stap (zie onder).
+> **SmartScreen warning:** the executables are not code-signed, so Windows shows "Windows protected your PC".
+> Click **More info**, then **Run anyway**. Code signing is an optional future step.
 
-Na het starten staat er een tray-icoon: widgets aan/uit, vergrendelen, instellingen, starten met Windows, afsluiten.
-Tot je vergrendelt kun je elke widget verslepen; de plek wordt per widget en per monitor onthouden.
+After starting, DeskGlass lives in the **tray**: toggle each widget, lock/unlock, widget sizes, 12/24-hour clock, settings,
+start with Windows, quit.
 
-## Instellingen
+## Moving, resizing and locking
 
-Tray → **Instellingen…**
+- **Unlocked (edit mode):** every widget has a dashed outline and a handle in the bottom-right corner. Drag a widget to move it, drag the handle to resize it
+  (each widget has a minimum and maximum size). Size presets **S / M / L** are in the tray ("Formaat") and in Settings.
+- **Locked:** position and size are frozen, and the outlines and handles disappear. Nothing else changes: widgets stay behind all other windows,
+  survive Win+D, and every control (music buttons, task checkboxes, chat input, Settings) keeps working. Lock/unlock from the tray or Settings.
+- Position and size are remembered per widget and per monitor, restored after a restart, and clamped back onto the screen if a monitor disappears.
+  The lock state is remembered too.
 
-- **Weer:** plaatsnaam. **Agenda:** plak het geheime iCal-adres (Google Agenda → *Instellingen → Geheim adres in iCal-indeling*).
-- **AI:** kies *Web-chat* (provider: Claude / ChatGPT / Gemini) of *API / lokaal*: Anthropic (API-sleutel) of OpenAI-compatibel (Base-URL + model, sleutel optioneel; bijv. `http://localhost:11434/v1` voor Ollama).
-- Sleutels en het ICS-adres worden **versleuteld** opgeslagen (Windows DPAPI via Electron `safeStorage`), nooit in platte JSON en nooit gelogd.
-  Een API-sleutel gaat alleen naar `api.anthropic.com`, of naar jouw endpoint via https/localhost.
+## Settings
 
-## Widgets verplaatsen en vergroten
+Tray, then **Instellingen...**
 
-Tray → **Widgets vergrendelen** uit = bewerkmodus: elke widget heeft een stippellijn en een **greep rechtsonder**. Sleep de kop (of de hele widget) om te verplaatsen,
-sleep de greep om het formaat te wijzigen. Elke widget heeft een minimum- en maximumformaat; de inhoud schaalt mee.
-Snelle formaten **S / M / L** staan in de tray (*Formaat*) en in Instellingen. Positie en formaat worden per widget en per monitor onthouden en
-teruggezet binnen het scherm als een monitor verdwijnt.
+- **Clock:** 24-hour or 12-hour (AM/PM), seconds on/off. Changes apply immediately.
+- **Weather:** city. **Agenda:** paste your secret iCal address (Google Calendar: *Settings, Integrate calendar, Secret address in iCal format*).
+- **AI chat:** *Web chat* (Claude / ChatGPT / Gemini) or *API / local* (Anthropic key, or an OpenAI-compatible base URL and model, for example `http://localhost:11434/v1` for Ollama).
+- Keys, tokens and the ICS URL are stored **encrypted** (Windows DPAPI through Electron `safeStorage`), never in plain JSON, never logged.
+  An API key is only sent to `api.anthropic.com`, or to your own endpoint over https or localhost.
 
-## Spotify koppelen
+## Connecting Spotify
 
-DeskGlass gebruikt jouw eigen (gratis) Spotify-app; er zit geen client secret in DeskGlass.
+DeskGlass uses your own free Spotify developer app, so there is no client secret inside DeskGlass.
 
-1. Ga naar <https://developer.spotify.com/dashboard> → **Create app** (naam/omschrijving vrij).
-2. Kies bij *API/SDKs* de **Web API**.
-3. Voeg bij **Redirect URIs** exact toe: `http://127.0.0.1:8898/callback` (dus `127.0.0.1`, geen `localhost`, geen https, poort 8898) en sla op.
-4. Kopieer het **Client ID** (32 tekens).
-5. DeskGlass → Instellingen → *Muziek (Spotify)*: plak het Client ID, **Opslaan**, dan **Verbinden met Spotify**. Je browser opent; keur goed. Klaar.
+1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and **Create app** (any name and description).
+2. Select the **Web API**.
+3. Under **Redirect URIs** add exactly `http://127.0.0.1:8898/callback` (`127.0.0.1`, not `localhost`, no https, port 8898) and save.
+4. Copy the **Client ID** (32 characters).
+5. In DeskGlass: Settings, *Muziek (Spotify)*: paste the Client ID, **Opslaan**, then **Verbinden met Spotify**. Approve in the browser that opens.
 
-Scopes: `user-read-playback-state`, `user-modify-playback-state`, `user-read-currently-playing`. Het refresh-token wordt versleuteld opgeslagen
-(Windows DPAPI) en nooit gelogd; **Ontkoppelen** verwijdert het.
-**Let op:** afspeelbediening (play/pause/volgende/vorige) vereist dat de **eigenaar van de Spotify-app Premium heeft**; zonder Premium blijft de widget alleen-lezen
-(met een duidelijke melding). Is er geen actief apparaat, dan toont de widget "Open Spotify op een apparaat". De poort 8898 moet vrij zijn tijdens het verbinden.
+Scopes: `user-read-playback-state`, `user-modify-playback-state`, `user-read-currently-playing`. The refresh token is stored encrypted and never logged;
+**Ontkoppelen** deletes it.
 
-## AI-chat (web)
+- **Playback controls need Spotify Premium** for the owner of the Spotify app. Without Premium the widget stays read-only and says so.
+- With no active device the widget shows "Open Spotify op een apparaat". Port 8898 must be free while connecting.
 
-Standaard laadt de chat-widget de site van je keuze (Claude, ChatGPT of Gemini) in een eigen, afgeschermd venster. **Jij logt zelf in op de site**; de sessie wordt onthouden.
-DeskGlass gebruikt of leest nooit je inloggegevens of cookies en doet **geen** "inloggen met Claude/ChatGPT"-koppeling (dat is niet toegestaan voor abonnementen).
-Het venster mag alleen navigeren binnen de domeinen van de gekozen aanbieder; andere links openen in je gewone browser; alleen het klembord is toegestaan als permissie.
-Staat Google- of Apple-inloggen embedded niet toe, log dan in met e-mail (Gemini heeft alleen Google-login; werkt dat niet, gebruik dan Claude of ChatGPT).
+## AI chat (web mode)
 
-## Bureaublad-laag (belangrijk)
+The chat widget loads the chosen site (Claude, ChatGPT or Gemini) in its own isolated view with its own remembered session. **You log in on the site yourself.**
+DeskGlass never reads or reuses your credentials or cookies and does not implement any "Log in with Claude/ChatGPT" OAuth flow.
+The view can only navigate within the provider's own domains, other links open in your normal browser, and only clipboard write is allowed.
+If Google or Apple sign-in is refused inside the embedded view, log in with e-mail (Gemini only offers Google sign-in, so use Claude or ChatGPT if it does not work).
 
-| Modus | Gedrag |
+## Desktop layer (important)
+
+| Mode | Behaviour |
 |---|---|
-| **Bureaublad-laag** (standaard, `auto`) | Widgets worden onderdeel van het bureaublad zelf: altijd achter alle vensters, overleven **Win+D**. Een Windows-limiet: zo'n venster krijgt **geen** echte acrylic-blur, dus de tint is donkerder. |
-| **Onderaan** | Normaal venster vastgepind onderaan, mét echte acrylic-blur, maar **Win+D verbergt de widgets**. Te kiezen in Instellingen (herstart nodig). |
+| **Desktop layer** (default, `auto`) | Widgets become part of the desktop itself: always behind all windows and they survive **Win+D**. A Windows limitation: such windows get **no real acrylic blur**, so a darker tint is used. |
+| **Bottom** | A normal window pinned to the bottom, with real acrylic blur, but **Win+D hides the widgets**. Selectable in Settings (restart needed). |
 
-`auto` probeert de bureaublad-laag en valt terug op *onderaan* als dat niet lukt.
+`auto` tries the desktop layer and falls back to *bottom* if that fails.
 
-## Ontwikkelen
+## Build from source
 
-Vereist Node ≥ 22 (en Windows 11 voor de volledige ervaring).
+Requires Node 22 or newer (and Windows 11 for the full experience).
 
 ```bash
-npm ci          # dependencies
-npm run dev     # app met hot reload
-npm test        # unit tests (vitest)
+npm ci            # install dependencies
+npm run dev       # run with hot reload
+npm test          # unit tests (vitest)
 npm run typecheck
-npm run dist    # bouwt installer + portable exe in dist/
+npm run dist      # build the installer and portable exe into dist/
 ```
 
-`npm run dist` maakt in `dist/`: `DeskGlass-Setup-<versie>.exe` en `DeskGlass-<versie>-portable.exe`.
-Stack: Electron + TypeScript, electron-vite (Vite + gewone CSS), electron-builder, electron-store, systeminformation, koffi, node-ical.
-Zie [SPEC.md](SPEC.md), [DESIGN.md](DESIGN.md) en [CLAUDE.md](CLAUDE.md).
+`npm run dist` produces `DeskGlass-Setup-<version>.exe` and `DeskGlass-<version>-portable.exe` in `dist/`.
+Stack: Electron + TypeScript, electron-vite (Vite + plain CSS), electron-builder, electron-store, systeminformation, koffi, node-ical.
+See [SPEC.md](SPEC.md), [DESIGN.md](DESIGN.md) and [CLAUDE.md](CLAUDE.md).
 
-## Release maken
+## Releasing
 
-Een release wordt automatisch gebouwd door GitHub Actions (`.github/workflows/release.yml`) zodra je een versietag pusht.
-De tag moet overeenkomen met `version` in `package.json`.
+A release is built automatically by GitHub Actions (`.github/workflows/release.yml`) when you push a version tag. The tag must match `version` in `package.json`.
 
 ```bash
-git tag v1.0.0
+git tag v1.0.1
 git push --tags
 ```
 
-De workflow draait `npm ci`, typecheck, tests en `npm run dist` op `windows-latest` en hangt beide exe-bestanden aan een GitHub Release.
-Geen auto-update in v1. Optioneel later: code signing (certificaat + `CSC_LINK`/`CSC_KEY_PASSWORD` als GitHub secrets) om SmartScreen te verminderen.
+The workflow runs `npm ci`, typecheck, tests and `npm run dist` on `windows-latest` and attaches both executables to a GitHub Release.
+There is no auto-update. Optional later: code signing (a certificate plus `CSC_LINK` / `CSC_KEY_PASSWORD` as GitHub secrets) to reduce SmartScreen warnings.
 
 ## Continue on another PC
 
@@ -110,14 +113,14 @@ npm ci
 npm run dev
 ```
 
-Lees daarna `HANDOFF.md` (status, wat werkt/kapot is, volgende stappen) en `CLAUDE.md` (projectcontext).
-Voor werken met Claude Code moet op die machine ook de **ECC-plugin** met de regels **`common` + `typescript`** geïnstalleerd zijn.
+Then read `HANDOFF.md` (status per widget, what works, what is unverified, next steps) and `CLAUDE.md` (project context).
+To keep working with Claude Code, the **ECC plugin** with the rules **`common` and `typescript`** must be installed on that machine.
 
 ## Privacy
 
-Alles draait lokaal. Netwerkverkeer: Open-Meteo (plaatsnaam → weer), je ICS-adres, en je gekozen AI-endpoint.
-Geen telemetrie. Instellingen staan in `%APPDATA%\DeskGlass`. Dev- en geïnstalleerde versie delen die map.
+Everything runs locally. Network traffic: Open-Meteo (your city, for the weather), your ICS URL, Spotify (if connected), and the AI service you choose.
+No telemetry. Settings live in `%APPDATA%\DeskGlass`; the development build and the installed app share that folder.
 
-## Licentie
+## License
 
 MIT

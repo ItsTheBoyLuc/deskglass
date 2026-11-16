@@ -1,7 +1,14 @@
 # HANDOFF
 
-Last updated: 2026-11-16 · branch `main` · version 1.0.0 · **release v1.0.0 approved by the user and published via the GitHub Actions workflow** (see Releases page: https://github.com/ItsTheBoyLuc/deskglass/releases)
+Last updated: 2026-11-16 · branch `main` · version **1.0.1** (v1.0.0 was released earlier; v1.0.1 release approved by the user, see Releases: https://github.com/ItsTheBoyLuc/deskglass/releases)
 Scope now includes the second brief: resizable widgets (S/M/L), Spotify widget (PKCE), web-chat mode (default).
+
+## v1.0.1 (lock fix + clock format)
+- **Lock bug fixed.** Cause (reproduced): locking called `setIgnoreMouseEvents(true)` on the clock, stats and weather windows. Electron implements that by switching WS_EX_LAYERED/WS_EX_TRANSPARENT on the HWND, which turned the embedded widgets into **empty grey acrylic blocks drawn over other windows**. That call is gone. Lock now only freezes position and size (pure `gestureBounds` in `positions.ts`, tested), hides outline + resize handles, disables the S/M/L presets (tray "Formaat" greyed, settings buttons disabled), and saves all bounds when locking. No click-through, no z-order or visibility change; all controls stay clickable. The lock state persists.
+- **Clock 12h/24h:** `formatClock()` in `src/shared/clock.ts` (tested: midnight 12:00 AM, noon 12:00 PM, no leading zero in 12h, seconds in both). Setting `clockHour12` (default false), Settings select "Klok: tijdnotatie" + tray checkbox, applies live. Seconds render as ":SS", AM/PM small next to the time.
+- README rewritten in English (app UI stays Dutch).
+- Verified live (dev build, embedded mode): 3 lock/unlock cycles with the Claude window open on top (nothing drawn over it), locked + Win+D (all six widgets visible with content), geometry identical before/after cycles, gestures and presets refused while locked, unlocked gesture starts again, 12/24h and seconds combinations apply live. 126 unit tests.
+- **Not verified:** a real mouse drag/resize while locked/unlocked (the mouse tool could not move the cursor; the lock guard is unit-tested and the IPC gesture path was checked via logs); the bottom (non-embedded) mode with lock; multi-monitor.
 
 ## Status per widget
 
@@ -16,7 +23,7 @@ Scope now includes the second brief: resizable widgets (S/M/L), Spotify widget (
 | Settings, tray | work | tray menu incl. *Formaat* S/M/L seen; settings sections (Formaat, Spotify, AI modus) render |
 
 ## Resizing
-Edit mode (unlocked): dashed outline + corner handle. Renderer -> IPC start/end, main follows the cursor and `setBounds` (32 ms, only on change), per-widget min/max, clamped to the monitor, saved per widget per monitor (`positions.ts`). S/M/L via tray + settings. Verified while embedded: shrink to min, grow, presets, size persists after restart (packaged build). A **watchdog** ends a gesture if no mouse button is down (lost pointerup, release over the web view).
+Edit mode (unlocked): dashed outline + corner handle. Locked: position and size frozen, nothing else changes. Renderer -> IPC start/end, main follows the cursor and `setBounds` (32 ms, only on change), per-widget min/max, clamped to the monitor, saved per widget per monitor (`positions.ts`). S/M/L via tray + settings. Verified while embedded: shrink to min, grow, presets, size persists after restart (packaged build). A **watchdog** ends a gesture if no mouse button is down (lost pointerup, release over the web view).
 **Not verified:** a real mouse-driven resize after the watchdog was added (the mouse tool stopped moving the cursor late in the session); the earlier real-cursor resize (before the watchdog) worked. Multi-monitor / mixed DPI untested.
 
 ## Shipped desktop mode
@@ -45,7 +52,7 @@ Do not animate `width`/`height` or run CSS transitions on a widget that updates 
 ## Next 3 steps
 1. Install `dist/DeskGlass-Setup-1.0.0.exe`, create a Spotify app (README steps), connect, and confirm now-playing + controls.
 2. Log in to Claude/ChatGPT in the chat widget; try resizing every widget with the mouse (also on a second monitor if you have one).
-3. Download the exes from the Releases page and try them (SmartScreen: More info > Run anyway). Further changes: bump `version` in package.json, tag `vX.Y.Z` (the tag must match the version).
+3. Download the exes from the Releases page and try them (SmartScreen: More info > Run anyway). For further releases bump `version` in package.json (and the lockfile), tag `vX.Y.Z` (the tag must match the version) and push the tag.
 
 ## How to resume
 ```bash
