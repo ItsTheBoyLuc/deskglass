@@ -8,7 +8,7 @@ compression: maximum
 asar: true
 # koffi loads a native .node file, which cannot be loaded from inside the asar archive.
 asarUnpack:
-  - node_modules/koffi/build/koffi/win32_x64/**
+  - node_modules/@koromix/koffi-win32-x64/**
 # Only the built output and runtime dependencies. No sources, tests, maps or docs.
 files:
   - out/**
@@ -16,8 +16,10 @@ files:
   - "!**/*.map"
   - "!**/*.{md,markdown,ts,mts,cts,tsbuildinfo}"
   - "!**/{test,tests,__tests__,docs,doc,example,examples,.github}/**"
-  - "!node_modules/koffi/{src,doc,vendor}/**"
-  - "!node_modules/koffi/build/koffi/!(win32_x64)/**"
+  # koffi: keep its JS (src/koffi/*.js) but drop its C++ sources, docs and vendored libs.
+  - "!node_modules/koffi/{doc,vendor,lib}/**"
+  - "!node_modules/koffi/src/koffi/src/**/*.{cc,hh,S,asm,inc,def}"
+  - "!node_modules/koffi/src/koffi/CMakeLists.txt"
 electronLanguages:
   - en-US
   - nl
