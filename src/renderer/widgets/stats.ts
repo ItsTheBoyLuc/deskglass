@@ -32,7 +32,7 @@ export const mountStats: Mount = (root, ctx) => {
   const set = (row: Row, pct: number | null, sub?: string | null): void => {
     row.value.textContent = pct === null ? 'n/a' : `${pct}%`
     row.value.classList.toggle('faint', pct === null)
-    row.bar.style.width = `${pct ?? 0}%`
+    row.bar.style.transform = `scaleX(${(pct ?? 0) / 100})`
     row.bar.className = pct === null ? '' : meterClass(pct)
     if (row.sub) row.sub.textContent = sub ?? ''
   }

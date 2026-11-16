@@ -10,7 +10,7 @@
 .stat .label { color: var(--text-dim); }
 .stat .value { text-align: right; }
 .meter { height: 6px; border-radius: 3px; background: var(--bg-card); overflow: hidden; }
-.meter > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width 400ms var(--ease), background 200ms; }
+.meter > i { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: 3px; transform: scaleX(0); transform-origin: left; } /* transform, not width: animating width re-lays-out every frame */
 .meter > i.warn { background: var(--warn); }
 .meter > i.bad { background: var(--bad); }
 .net { display: flex; justify-content: space-between; color: var(--text-dim); }

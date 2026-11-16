@@ -18,7 +18,7 @@ Electron + TypeScript, `electron-vite` (Vite, plain CSS, no UI framework), `elec
 - `src/main/desktop.ts`: embeds windows into Progman (desktop layer) via koffi; falls back to HWND_BOTTOM pinning.
 - Pure, unit-tested logic: `positions.ts`, `secrets.ts`, `shared/settings.ts`, `services/chat/{sse,providers}.ts`, `services/ics.ts`.
 
-## v1.1 features
+## Resize, Spotify, web chat
 Resizable widgets (main follows cursor, `positions.ts` clamps), Spotify (`services/spotify/*`, PKCE, port 8898), web-chat default mode (`webchat.ts`, `shared/webproviders.ts`). Pure/tested: `positions.ts`, `spotify/{pkce,tokens,api,connect}.ts`, `webproviders.ts`.
 
 ## Decisions worth knowing
