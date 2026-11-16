@@ -26,11 +26,11 @@ const guard = <A extends unknown[], R>(fn: (...a: A) => R, fallback: Awaited<R>)
 
 const SECRET_NAMES: readonly SecretName[] = ['chatApiKey', 'icsUrl']
 
-function saveSecret(name: unknown, value: unknown): SecretResult {
+async function saveSecret(name: unknown, value: unknown): Promise<SecretResult> {
   if (!SECRET_NAMES.includes(name as SecretName) || typeof value !== 'string') return { ok: false, error: 'Ongeldige invoer' }
   try {
     if (name === 'icsUrl' && value.trim()) normalizeIcsUrl(value)
-    secrets.set(name as SecretName, value.trim())
+    await secrets.set(name as SecretName, value.trim())
     if (name === 'icsUrl') clearEventsCache()
     broadcastState()
     return { ok: true }
@@ -71,7 +71,7 @@ export function registerIpc(): void {
     if (!win) return
     await sendChat(text, {
       settings: getSettings(),
-      apiKey: secrets.get('chatApiKey'),
+      apiKey: await secrets.get('chatApiKey'),
       emit: (ev) => { if (!win.isDestroyed()) win.webContents.send(CH.chatEvent, ev) }
     })
   })

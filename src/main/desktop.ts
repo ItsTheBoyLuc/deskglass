@@ -73,7 +73,9 @@ function tryEmbed(win: BrowserWindow): boolean {
     const style = api.GetWindowLongPtrW(h, GWL_STYLE)
     api.SetWindowLongPtrW(h, GWL_STYLE, ((style & ~WS_POPUP) | WS_CHILD) >>> 0)
     api.SetParent(h, progman)
-    if (api.GetParent(h) !== progman) {
+    const parent = api.GetParent(h)
+    if (process.env.DESKGLASS_DEBUG) console.info('[desktop] embed', { h, progman, parent })
+    if (parent !== progman) {
       api.SetWindowLongPtrW(h, GWL_STYLE, style)
       return false
     }

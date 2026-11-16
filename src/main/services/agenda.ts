@@ -7,7 +7,7 @@ const WINDOW_DAYS = 14
 
 /** Upcoming events from the (secret) ICS URL. Cached; on failure the cached events are shown with an error. */
 export async function getEvents(force: boolean): Promise<EventsResult> {
-  const url = secrets.get('icsUrl')
+  const url = await secrets.get('icsUrl')
   if (!url) return { events: [], configured: false }
   const cached = store.get('eventsCache')
   if (!force && cached && Date.now() - cached.fetchedAt < TTL_MS) {
