@@ -2,6 +2,7 @@ import { store } from '../store'
 import type { WeatherData, WeatherResult } from '../../shared/types'
 
 const TIMEOUT_MS = 10_000
+const CACHE_TTL_MS = 14 * 60_000
 
 async function getJson(url: string): Promise<any> {
   const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) })
@@ -48,7 +49,10 @@ async function locate(city: string): Promise<{ lat: number; lon: number; name: s
 }
 
 /** Fetch fresh weather; on any failure fall back to the last cached result (flagged stale). */
-export async function fetchWeather(city: string): Promise<WeatherResult> {
+export async function fetchWeather(city: string, force = false): Promise<WeatherResult> {
+  const cache = store.get('weatherCache')
+  // Serve the cache while it is fresh (visibility changes must not turn into API calls).
+  if (!force && cache && store.get('geoCache')?.city === city && Date.now() - cache.updatedAt < CACHE_TTL_MS) return { data: cache }
   try {
     const geo = await locate(city)
     const j = await getJson(
@@ -62,7 +66,7 @@ export async function fetchWeather(city: string): Promise<WeatherResult> {
     store.set('weatherCache', data)
     return { data }
   } catch (e) {
-    const cached = store.get('weatherCache')
+    const cached = store.get('geoCache')?.city === city ? store.get('weatherCache') : undefined
     const message = e instanceof Error ? e.message : 'Onbekende fout'
     return cached
       ? { data: cached, stale: true, error: 'Offline: laatst bekende weer' }

@@ -6,6 +6,10 @@ export interface DisplayInfo { id: number; workArea: Rect }
 /** Remembered placement of one widget: where it was on every monitor it has lived on. */
 export interface WidgetPositions { last: number; byDisplay: Record<string, Point> }
 
+/** The store file is user-editable: only trust finite numbers. */
+const validPoint = (p: Point | undefined): Point | undefined =>
+  p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : undefined
+
 export function clampToWorkArea(p: Point, size: Size, wa: Rect): Point {
   const maxX = wa.x + wa.width - size.width
   const maxY = wa.y + wa.height - size.height
@@ -34,9 +38,9 @@ export function resolvePosition(
 ): Point {
   const primary = displays.find((d) => d.id === primaryId) ?? displays[0]
   if (!primary) return { x: 0, y: 0 }
-  if (!saved) return clampToWorkArea(fallback(primary.workArea), size, primary.workArea)
+  if (!saved || typeof saved !== 'object') return clampToWorkArea(fallback(primary.workArea), size, primary.workArea)
   const home = displays.find((d) => d.id === saved.last)
-  const point = saved.byDisplay[String(saved.last)]
+  const point = validPoint(saved.byDisplay?.[String(saved.last)])
   if (home && point) return clampToWorkArea(point, size, home.workArea)
   if (point) return clampToWorkArea(point, size, primary.workArea)
   return clampToWorkArea(fallback(primary.workArea), size, primary.workArea)

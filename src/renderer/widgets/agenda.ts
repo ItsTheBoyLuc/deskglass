@@ -68,9 +68,9 @@ export const mountAgenda: Mount = (root, ctx) => {
     events.replaceChildren(...rows)
   }
 
-  let hadIcs = ctx.state().hasIcsUrl
+  let hadIcs = ctx.state().has.icsUrl
   ctx.onState((s) => {
-    if (s.hasIcsUrl !== hadIcs) { hadIcs = s.hasIcsUrl; void ctx.api.getEvents(true).then(renderEvents) }
+    if (s.has.icsUrl !== hadIcs) { hadIcs = s.has.icsUrl; void ctx.api.getEvents(true).then(renderEvents) }
   })
   void ctx.api.listTasks().then(renderTasks)
   whileVisible(10 * 60_000, () => void ctx.api.getEvents(false).then(renderEvents))

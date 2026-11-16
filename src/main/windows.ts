@@ -1,4 +1,4 @@
-import { BrowserWindow, app, screen, session, shell } from 'electron'
+import { BrowserWindow, app, screen, session } from 'electron'
 import { join } from 'node:path'
 import { CH } from '../shared/ipc'
 import { WIDGET_IDS, WIDGET_SIZES } from '../shared/types'
@@ -19,6 +19,9 @@ const widgets = new Map<WidgetId, BrowserWindow>()
 const stops = new Map<WidgetId, () => void>()
 let settingsWin: BrowserWindow | null = null
 let activeMode: ActiveDesktopMode = 'bottom'
+let onModeChange: (() => void) | null = null
+/** Lets the tray refresh its label once the desktop mode is known (avoids a circular import). */
+export const setModeListener = (cb: () => void): void => { onModeChange = cb }
 
 const displays = (): DisplayInfo[] => screen.getAllDisplays().map((d) => ({ id: d.id, workArea: d.workArea }))
 
@@ -44,8 +47,7 @@ function placement(id: WidgetId): Point {
 export function buildState(): AppState {
   return {
     settings: getSettings(),
-    hasChatKey: secrets.has('chatApiKey'),
-    hasIcsUrl: secrets.has('icsUrl'),
+    has: { chatApiKey: secrets.has('chatApiKey'), compatApiKey: secrets.has('compatApiKey'), icsUrl: secrets.has('icsUrl') },
     desktopMode: activeMode,
     autostart: isAutostart(),
     version: app.getVersion()
@@ -72,11 +74,10 @@ function load(win: BrowserWindow, id: string): void {
 
 /** Renderer pages are local and static: never allow navigation, new windows or permission prompts. */
 function harden(win: BrowserWindow): void {
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https:\/\//i.test(url)) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', (e) => e.preventDefault())
+  win.webContents.on('will-redirect', (e) => e.preventDefault())
+  win.webContents.on('will-attach-webview', (e) => e.preventDefault())
 }
 
 const baseWebPrefs = (): Electron.WebPreferences => ({
@@ -116,6 +117,7 @@ function createWidget(id: WidgetId): BrowserWindow {
   load(win, id)
   win.once('ready-to-show', () => {
     activeMode = attach(win, getSettings().desktopMode).mode
+    onModeChange?.()
     win.showInactive()
     applyLock(id)
     broadcastState()
@@ -154,7 +156,7 @@ export function repositionAll(): void {
   for (const [id, w] of widgets) {
     if (w.isDestroyed()) continue
     const p = placement(id)
-    w.setPosition(p.x, p.y)
+    w.setBounds({ ...p, ...WIDGET_SIZES[id] }) // setBounds, not setPosition: avoids DPI-induced resizes
   }
 }
 
@@ -168,6 +170,7 @@ export function startDrag(win: BrowserWindow): void {
   const origin = win.getPosition()
   const cursor0 = screen.getCursorScreenPoint()
   const size = WIDGET_SIZES[id]
+  win.once('closed', () => endDrag(win)) // a vanished window must not leave the timer running
   dragTimer = setInterval(() => {
     if (win.isDestroyed()) return endDrag(win)
     const c = screen.getCursorScreenPoint()
@@ -210,7 +213,7 @@ export function openSettings(): void {
 export const widgetFor = (win: BrowserWindow | null): WidgetId | undefined =>
   win ? [...widgets].find(([, w]) => w === win)?.[0] : undefined
 export const isOurWindow = (win: BrowserWindow | null): boolean => Boolean(win) && (widgetFor(win) !== undefined || win === settingsWin)
-export const visibleWidgets = (): WidgetId[] => [...widgets.keys()]
+export const isSettingsWindow = (win: BrowserWindow | null): boolean => Boolean(win) && win === settingsWin
 
 export function watchDisplays(): void {
   let t: NodeJS.Timeout | null = null

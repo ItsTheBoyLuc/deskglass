@@ -29,7 +29,7 @@ export const mountChat: Mount = (root, ctx) => {
   }
   const renderHint = (): void => {
     const { chat } = ctx.state().settings
-    const noKey = chat.provider === 'anthropic' && !ctx.state().hasChatKey
+    const noKey = chat.provider === 'anthropic' && !ctx.state().has.chatApiKey
     hint.textContent = noKey ? 'Geen API-sleutel: open Instellingen → AI.' : `${chat.provider === 'anthropic' ? 'Anthropic' : 'Eigen endpoint'} · ${chat.model}`
   }
 
@@ -53,7 +53,7 @@ export const mountChat: Mount = (root, ctx) => {
     addMsg('user', text)
     bubble = null
     setStreaming(true)
-    void ctx.api.chatSend(text)
+    ctx.api.chatSend(text).catch(() => { addMsg('err', 'Versturen mislukt.'); setStreaming(false) })
   }
   send.addEventListener('click', submit)
   input.addEventListener('keydown', (e) => {

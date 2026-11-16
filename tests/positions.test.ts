@@ -41,6 +41,12 @@ describe('resolvePosition', () => {
     resolvePosition(saved, size, [d1], 1, fallback)
     expect(resolvePosition(saved, size, [d1, d2], 1, fallback)).toEqual({ x: 2500, y: 300 })
   })
+  it('ignores corrupt saved data (NaN, missing fields) instead of throwing', () => {
+    const bad = { last: 1, byDisplay: { '1': { x: Number.NaN, y: 5 } } }
+    expect(resolvePosition(bad, size, [d1], 1, fallback)).toEqual({ x: 1580, y: 24 })
+    expect(resolvePosition({ last: 1 } as never, size, [d1], 1, fallback)).toEqual({ x: 1580, y: 24 })
+    expect(resolvePosition('junk' as never, size, [d1], 1, fallback)).toEqual({ x: 1580, y: 24 })
+  })
   it('re-clamps a saved position if the display got smaller', () => {
     const saved = rememberPosition(undefined, 1, { x: 1800, y: 900 })
     const small: DisplayInfo = { id: 1, workArea: { x: 0, y: 0, width: 1280, height: 720 } }

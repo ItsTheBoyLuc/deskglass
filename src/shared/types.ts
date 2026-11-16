@@ -33,14 +33,15 @@ export interface Settings {
 /** What the renderer may see. Secrets never leave main; only whether they exist. */
 export interface AppState {
   settings: Settings
-  hasChatKey: boolean
-  hasIcsUrl: boolean
+  /** Which secrets exist (never their values). */
+  has: Record<SecretName, boolean>
   desktopMode: ActiveDesktopMode
   autostart: boolean
   version: string
 }
 
-export type SecretName = 'chatApiKey' | 'icsUrl'
+/** chatApiKey = Anthropic key, compatApiKey = key for the OpenAI-compatible endpoint (kept apart so one never goes to the other's host). */
+export type SecretName = 'chatApiKey' | 'compatApiKey' | 'icsUrl'
 
 /** Every metric is nullable: unreadable sensors show "n/a" instead of crashing. */
 export interface StatsSnapshot {

@@ -1,0 +1,42 @@
+name: Release
+
+# Runs only when a version tag such as v1.0.0 is pushed. Nothing is published until you tag.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Tag must match package.json version
+        shell: bash
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "$v" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $v" >&2
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/DeskGlass-Setup-*.exe
+            dist/DeskGlass-*-portable.exe
+          generate_release_notes: true

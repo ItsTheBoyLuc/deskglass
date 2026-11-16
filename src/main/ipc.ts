@@ -3,7 +3,7 @@ import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import { CH } from '../shared/ipc'
 import type { SecretResult } from '../shared/ipc'
 import type { SecretName } from '../shared/types'
-import { endDrag, isOurWindow, buildState, broadcastState, openSettings, startDrag, syncWidgets, applyLock } from './windows'
+import { endDrag, isOurWindow, isSettingsWindow, buildState, broadcastState, openSettings, startDrag, syncWidgets, applyLock } from './windows'
 import { getSettings, secrets, updateSettings } from './store'
 import { addTask, listTasks, removeTask, toggleTask } from './services/tasks'
 import { clearEventsCache, getEvents } from './services/agenda'
@@ -17,14 +17,18 @@ type Ev = IpcMainEvent | IpcMainInvokeEvent
 
 /** Only our own windows may call in. Anything else (e.g. a navigated frame) is ignored. */
 function trusted(e: Ev): BrowserWindow | null {
+  if (e.senderFrame && e.senderFrame !== e.sender.mainFrame) return null // no sub-frames
   const win = BrowserWindow.fromWebContents(e.sender)
   return win && isOurWindow(win) ? win : null
 }
 
+/** Changing settings/secrets/autostart is only allowed from the settings window, not from display widgets. */
+const fromSettings = (e: Ev): boolean => isSettingsWindow(trusted(e))
+
 const guard = <A extends unknown[], R>(fn: (...a: A) => R, fallback: Awaited<R>) =>
   (e: Ev, ...a: A): R | Awaited<R> => (trusted(e) ? fn(...a) : fallback)
 
-const SECRET_NAMES: readonly SecretName[] = ['chatApiKey', 'icsUrl']
+const SECRET_NAMES: readonly SecretName[] = ['chatApiKey', 'compatApiKey', 'icsUrl']
 
 async function saveSecret(name: unknown, value: unknown): Promise<SecretResult> {
   if (!SECRET_NAMES.includes(name as SecretName) || typeof value !== 'string') return { ok: false, error: 'Ongeldige invoer' }
@@ -41,7 +45,8 @@ async function saveSecret(name: unknown, value: unknown): Promise<SecretResult> 
 
 export function registerIpc(): void {
   ipcMain.handle(CH.getState, guard(() => buildState(), buildState()))
-  ipcMain.handle(CH.setSettings, guard((patch: unknown) => {
+  ipcMain.handle(CH.setSettings, (e, patch: unknown) => {
+    if (!fromSettings(e)) return buildState()
     const before = getSettings()
     const next = updateSettings(patch)
     if (JSON.stringify(before.enabled) !== JSON.stringify(next.enabled)) syncWidgets()
@@ -49,9 +54,15 @@ export function registerIpc(): void {
     refreshTray()
     broadcastState()
     return buildState()
-  }, buildState()))
-  ipcMain.handle(CH.setSecret, (e, name, value) => (trusted(e) ? saveSecret(name, value) : { ok: false, error: 'Geen toegang' }))
-  ipcMain.handle(CH.setAutostart, guard((on: unknown) => { setAutostart(on === true); refreshTray(); broadcastState(); return isAutostart() }, false))
+  })
+  ipcMain.handle(CH.setSecret, (e, name, value) => (fromSettings(e) ? saveSecret(name, value) : { ok: false, error: 'Geen toegang' }))
+  ipcMain.handle(CH.setAutostart, (e, on: unknown) => {
+    if (!fromSettings(e)) return isAutostart()
+    setAutostart(on === true)
+    refreshTray()
+    broadcastState()
+    return isAutostart()
+  })
   ipcMain.on(CH.openSettings, guard(() => openSettings(), undefined))
   ipcMain.on(CH.dragStart, (e) => { const w = trusted(e); if (w) startDrag(w) })
   ipcMain.on(CH.dragEnd, (e) => { const w = trusted(e); if (w) endDrag(w) })
@@ -71,7 +82,7 @@ export function registerIpc(): void {
     if (!win) return
     await sendChat(text, {
       settings: getSettings(),
-      apiKey: await secrets.get('chatApiKey'),
+      apiKey: await secrets.get(getSettings().chat.provider === 'anthropic' ? 'chatApiKey' : 'compatApiKey'),
       emit: (ev) => { if (!win.isDestroyed()) win.webContents.send(CH.chatEvent, ev) }
     })
   })

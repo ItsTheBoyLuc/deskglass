@@ -97,6 +97,7 @@ export interface Attached { mode: ActiveDesktopMode }
 
 /** Attach a widget window to the desktop layer. `want` comes from settings ('auto' tries workerw first). */
 export function attach(win: BrowserWindow, want: DesktopMode): Attached {
+  win.on('closed', () => { pinned.delete(win); embedded.delete(win) }) // also for embedded windows (no leak)
   if (want !== 'bottom' && tryEmbed(win)) return { mode: 'workerw' }
   pinned.add(win)
   const repin = (): void => pinBottom(win)
@@ -104,16 +105,8 @@ export function attach(win: BrowserWindow, want: DesktopMode): Attached {
   win.on('focus', () => setTimeout(repin, 0))
   win.on('restore', repin)
   win.on('minimize', () => { win.restore(); repin() }) // Win+D minimises: undo it immediately
-  win.on('closed', () => { pinned.delete(win); embedded.delete(win) })
   startTimer()
   repin()
   return { mode: 'bottom' }
 }
 
-export function detachAll(): void {
-  if (timer) clearInterval(timer)
-  timer = null
-  pinned.clear()
-}
-
-export const isEmbedded = (win: BrowserWindow): boolean => embedded.has(win)

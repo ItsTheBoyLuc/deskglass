@@ -23,6 +23,7 @@ export function cleanHttpUrl(v: unknown): string | null {
   try {
     const u = new URL(v.trim())
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    if (u.username || u.password) return null // credentials in a URL would be stored in plaintext
     return u.toString().replace(/\/+$/, '')
   } catch {
     return null

@@ -54,20 +54,36 @@ export function parseEvents(text: string, from: Date, to: Date): CalEvent[] {
   return out.sort((a, b) => a.start.localeCompare(b.start))
 }
 
+/** Read the body as a stream and stop at MAX_BYTES (Content-Length can be absent or wrong). */
+async function readCapped(res: Response): Promise<string> {
+  if (!res.body) return ''
+  const chunks: Uint8Array[] = []
+  let total = 0
+  try {
+    for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+      total += chunk.byteLength
+      if (total > MAX_BYTES) throw new IcsError('Agenda is te groot')
+      chunks.push(chunk)
+    }
+  } catch (e) {
+    if (e instanceof IcsError) throw e
+    throw new IcsError('Agenda ophalen mislukt (geen verbinding of time-out)')
+  }
+  return new TextDecoder('utf-8').decode(Buffer.concat(chunks))
+}
+
 /** Download the calendar: timeout + size cap, http(s) only. Error text never contains the (secret) URL. */
-export async function fetchIcs(url: string, signal?: AbortSignal): Promise<string> {
+export async function fetchIcs(url: string, signal?: AbortSignal, fetchImpl: typeof fetch = fetch): Promise<string> {
   const safe = normalizeIcsUrl(url)
   const timeout = AbortSignal.timeout(TIMEOUT_MS)
   let res: Response
   try {
-    res = await fetch(safe, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout, redirect: 'follow' })
+    res = await fetchImpl(safe, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout, redirect: 'follow' })
   } catch {
     throw new IcsError('Agenda ophalen mislukt (geen verbinding of time-out)')
   }
   if (!res.ok) throw new IcsError(`Agenda ophalen mislukt (HTTP ${res.status})`)
-  const len = Number(res.headers.get('content-length') ?? 0)
-  if (len > MAX_BYTES) throw new IcsError('Agenda is te groot')
-  const buf = new Uint8Array(await res.arrayBuffer())
-  if (buf.byteLength > MAX_BYTES) throw new IcsError('Agenda is te groot')
-  return new TextDecoder('utf-8').decode(buf)
+  // A redirect must not downgrade https to plain http (the URL is a secret).
+  if (safe.startsWith('https:') && res.url.startsWith('http:')) throw new IcsError('Onveilige doorverwijzing geweigerd')
+  return readCapped(res)
 }

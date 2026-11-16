@@ -5,6 +5,7 @@ import si from 'systeminformation'
 import type { StatsSnapshot } from '../../shared/types'
 
 const SLOW_MS = 10_000
+const NET_MS = 3000 // networkStats spawns a process on Windows: sample it slower than the cheap metrics
 const GB = 1024 ** 3
 
 /** Wraps a sensor read: any failure becomes null, never an exception. */
@@ -50,6 +51,8 @@ export function createStatsSampler() {
   let slowAt = 0
   let disk: Pick<StatsSnapshot, 'disk' | 'diskText'> = { disk: null, diskText: null }
   let diskAt = 0
+  let net: { down: number; up: number } | null = null
+  let netAt = 0
   const sysDrive = process.env.SystemDrive ? `${process.env.SystemDrive}\\` : 'C:\\'
 
   return async function sample(): Promise<StatsSnapshot> {
@@ -83,7 +86,9 @@ export function createStatsSampler() {
       slow = { gpu, cpuTemp: temp }
     }
 
-    const net = await safe(async () => {
+    if (Date.now() - netAt > NET_MS) {
+      netAt = Date.now()
+      net = await safe(async () => {
       const rows = await si.networkStats('*')
       let down = 0
       let up = 0
@@ -96,7 +101,8 @@ export function createStatsSampler() {
         }
       }
       return seen ? { down, up } : null
-    })
+      })
+    }
 
     return {
       cpu,

@@ -1,0 +1,49 @@
+appId: com.itstheboyluc.deskglass
+productName: DeskGlass
+copyright: Copyright © 2026 ItsTheBoyLuc
+directories:
+  output: dist
+  buildResources: build
+compression: maximum
+asar: true
+# koffi loads a native .node file, which cannot be loaded from inside the asar archive.
+asarUnpack:
+  - node_modules/koffi/build/koffi/win32_x64/**
+# Only the built output and runtime dependencies. No sources, tests, maps or docs.
+files:
+  - out/**
+  - package.json
+  - "!**/*.map"
+  - "!**/*.{md,markdown,ts,mts,cts,tsbuildinfo}"
+  - "!**/{test,tests,__tests__,docs,doc,example,examples,.github}/**"
+  - "!node_modules/koffi/{src,doc,vendor}/**"
+  - "!node_modules/koffi/build/koffi/!(win32_x64)/**"
+electronLanguages:
+  - en-US
+  - nl
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+  enableEmbeddedAsarIntegrityValidation: true
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  artifactName: DeskGlass-Setup-${version}.${ext}
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: DeskGlass
+  deleteAppDataOnUninstall: false
+portable:
+  artifactName: DeskGlass-${version}-portable.${ext}

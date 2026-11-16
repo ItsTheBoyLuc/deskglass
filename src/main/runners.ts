@@ -30,7 +30,7 @@ function runStats(win: BrowserWindow): () => void {
 }
 
 export async function refreshWeather(win: BrowserWindow): Promise<void> {
-  const r = await fetchWeather(getSettings().city)
+  const r = await fetchWeather(getSettings().city, true)
   if (alive(win)) win.webContents.send(CH.weather, r)
 }
 

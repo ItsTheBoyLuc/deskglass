@@ -38,6 +38,11 @@ describe('applySettingsPatch', () => {
     expect(junk.chat.baseUrl).toBe(DEFAULT_SETTINGS.chat.baseUrl)
   })
 
+  it('rejects base URLs that embed credentials', () => {
+    const next = applySettingsPatch(DEFAULT_SETTINGS, { chat: { baseUrl: 'https://user:pass@example.com/v1' } })
+    expect(next.chat.baseUrl).toBe(DEFAULT_SETTINGS.chat.baseUrl)
+  })
+
   it('only accepts known providers and desktop modes', () => {
     expect(applySettingsPatch(DEFAULT_SETTINGS, { chat: { provider: 'openai-compat' } }).chat.provider).toBe('openai-compat')
     expect(applySettingsPatch(DEFAULT_SETTINGS, { chat: { provider: 'evil' } } as never).chat.provider).toBe(DEFAULT_SETTINGS.chat.provider)

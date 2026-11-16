@@ -16,6 +16,16 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    plugins: [
+      {
+        // Dev only: Vite injects inline styles and an HMR websocket, which the strict production CSP forbids.
+        name: 'dev-csp',
+        apply: 'serve',
+        transformIndexHtml: (html: string) => html
+          .replace("style-src 'self'", "style-src 'self' 'unsafe-inline'")
+          .replace("connect-src 'none'", "connect-src 'self' ws://localhost:*")
+      }
+    ],
     build: {
       sourcemap: false,
       rollupOptions: { input: resolve('src/renderer/index.html') }

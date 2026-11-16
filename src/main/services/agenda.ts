@@ -19,7 +19,8 @@ export async function getEvents(force: boolean): Promise<EventsResult> {
     const to = new Date(from.getTime() + WINDOW_DAYS * 86_400_000)
     const events = parseEvents(await fetchIcs(url), from, to)
     const fetchedAt = Date.now()
-    store.set('eventsCache', { events, fetchedAt })
+    // The URL may have been changed/cleared while we were fetching: don't cache a stale calendar.
+    if ((await secrets.get('icsUrl')) === url) store.set('eventsCache', { events, fetchedAt })
     return { events, configured: true, fetchedAt }
   } catch (e) {
     const error = e instanceof IcsError ? e.message : 'Agenda ophalen mislukt'

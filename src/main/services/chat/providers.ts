@@ -32,6 +32,17 @@ export function openaiDelta(ev: SseEvent): Delta {
   return typeof content === 'string' && content ? { text: content } : {}
 }
 
+/** A key may only travel over https, or over plain http to this machine (e.g. Ollama on localhost). */
+export function keyTransportAllowed(baseUrl: string): boolean {
+  try {
+    const u = new URL(baseUrl)
+    if (u.protocol === 'https:') return true
+    return u.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname)
+  } catch {
+    return false
+  }
+}
+
 export interface RequestSpec { url: string; headers: Record<string, string>; body: string }
 
 export function buildAnthropicRequest(apiKey: string, model: string, messages: ChatMessage[]): RequestSpec {

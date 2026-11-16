@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { IcsError, normalizeIcsUrl, parseEvents } from '../src/main/services/ics'
+import { IcsError, fetchIcs, normalizeIcsUrl, parseEvents } from '../src/main/services/ics'
 
 const ICS = [
   'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//test//EN',
@@ -51,5 +51,31 @@ describe('normalizeIcsUrl', () => {
   })
   it.each(['', 'not a url', 'file:///c:/x.ics', 'javascript:alert(1)', 'ftp://x/y.ics'])('rejects %j', (bad) => {
     expect(() => normalizeIcsUrl(bad)).toThrow(IcsError)
+  })
+})
+
+describe('fetchIcs', () => {
+  const resp = (body: BodyInit, url = 'https://example.com/a.ics') => {
+    const r = new Response(body, { status: 200 })
+    Object.defineProperty(r, 'url', { value: url })
+    return r
+  }
+  it('returns the body text', async () => {
+    expect(await fetchIcs('https://example.com/a.ics', undefined, (async () => resp('BEGIN:VCALENDAR')) as typeof fetch)).toBe('BEGIN:VCALENDAR')
+  })
+  it('stops reading at the size cap even without Content-Length (chunked)', async () => {
+    const chunk = new Uint8Array(1024 * 1024)
+    let sent = 0
+    const body = new ReadableStream<Uint8Array>({ pull(c) { if (sent++ < 8) c.enqueue(chunk); else c.close() } })
+    await expect(fetchIcs('https://example.com/a.ics', undefined, (async () => resp(body)) as typeof fetch)).rejects.toThrow(/te groot/)
+    expect(sent).toBeLessThan(8)
+  })
+  it('rejects an https -> http downgrade after redirects', async () => {
+    await expect(fetchIcs('https://example.com/a.ics', undefined, (async () => resp('x', 'http://evil.test/a.ics')) as typeof fetch)).rejects.toThrow(/doorverwijzing/)
+  })
+  it('maps network failures to an IcsError without leaking the URL', async () => {
+    const f = (async () => { throw new Error('connect ECONNREFUSED https://example.com/secret-token') }) as typeof fetch
+    await expect(fetchIcs('https://example.com/secret-token', undefined, f)).rejects.toThrow(IcsError)
+    await expect(fetchIcs('https://example.com/secret-token', undefined, f)).rejects.not.toThrow(/secret-token/)
   })
 })
